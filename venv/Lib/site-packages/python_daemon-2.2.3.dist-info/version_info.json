@@ -1,0 +1,6 @@
+{
+    "release_date": "2019-01-21",
+    "version": "2.2.3",
+    "maintainer": "Ben Finney <ben+python@benfinney.id.au>",
+    "body": "Bug Fixes:* Use custom fake file type for testingfileno behaviour.This works around an incompatibility in Python 2.7file type that caused test cases to fail.\nChanges:* Promote the warning forrunner module to aDeprecationWarning. This has been an unofficial example module from the beginning, and it will\n  be removed in a future version.\n"
+}

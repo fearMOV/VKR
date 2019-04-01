@@ -1,0 +1,19 @@
+{
+  "daemon": true,
+  "redis": {
+    "host": "localhost",
+    "port": 6379,
+    "db": 0
+  },
+  "postgresql": {
+    "dbname": "naumendb",
+    "host": "localhost",
+    "user": "naucrm",
+    "password": "naucrm"
+  },
+  "consul": {
+    "host": "demo.consul.io",
+    "port": 80,
+    "dc": "dc1"
+  }
+}
