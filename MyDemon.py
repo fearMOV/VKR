@@ -25,9 +25,9 @@ def parser_config(*argvs):
     :return: возвращает словарь с конфигом
     """
     index = 0
-    if "-c" in argvs:
-        index = argvs.index("-c") + 1
-    with open("config.json" if index == 0 else argvs[index]) as inf:
+    if "-c" in argvs[0]:
+        index = argvs[0].index("-c") + 1
+    with open("config.json" if index == 0 else argvs[0][index]) as inf:
         config_json = json.load(inf)
     return config_json
 
@@ -38,18 +38,15 @@ def main():
 
     :return: Ничего не возвращает
     """
-    global k
+    global k, config
 
     # Переменная для формирования JSON файла
     data_json = {}
 
-    # Создаём словари для подключенний к PostgreSQL, Redis, Consul
-    data_conn_db = parser_config(sys.argv)
-
     # Подключаемся к PostgreSQL и делаем запросы
     with psycopg2.connect(
-            dbname=data_conn_db["postgresql"]["dbname"], host=data_conn_db["postgresql"]["host"],
-            user=data_conn_db["postgresql"]["user"], password=data_conn_db["postgresql"]["password"]
+            dbname=config["postgresql"]["dbname"], host=config["postgresql"]["host"],
+            user=config["postgresql"]["user"], password=config["postgresql"]["password"]
     ) as conn:
         with conn.cursor(cursor_factory=DictCursor) as cursor:
             cursor.execute('SELECT * FROM naumb_version')
@@ -80,9 +77,9 @@ def main():
 
     # Подключаемся к Redis и делаем запросы
     conn_redis = redis.StrictRedis(
-        host=data_conn_db["redis"]["host"],
-        port=data_conn_db["redis"]["port"],
-        db=data_conn_db["redis"]["db"]
+        host=config["redis"]["host"],
+        port=config["redis"]["port"],
+        db=config["redis"]["db"]
     )
 
     g = conn_redis.smembers("online_agents")
@@ -101,18 +98,21 @@ def main():
 
     # Закидывем json в consul
     c = consul.Consul(
-        host=data_conn_db["consul"]["host"],
-        port=data_conn_db["consul"]["port"],
-        dc=data_conn_db["consul"]["dc"]
+        host=config["consul"]["host"],
+        port=config["consul"]["port"],
+        dc=config["consul"]["dc"]
     )
     print(c.kv.put("log", my_json))
 
 
 # Тело программы--------------------------------------------------------------------------------------------------------
+# Создаём словари для подключенний к PostgreSQL, Redis, Consul
+config = parser_config(sys.argv)
+
 # Техническая переменная для отслеживания количества перезаписей
 k = 0
 """
-if "-d" in sys.argv:
+if config[daemon]:
     with daemon.DaemonContext():
         while True:
             k += 1
