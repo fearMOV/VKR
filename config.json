@@ -1,13 +1,13 @@
 {
   "daemon": true,
   "redis": {
-    "host": "localhost",
+    "host": "172.16.200.211",
     "port": 6379,
     "db": 0
   },
   "postgresql": {
     "dbname": "naumendb",
-    "host": "localhost",
+    "host": "172.16.200.211",
     "user": "naucrm",
     "password": "naucrm"
   },
