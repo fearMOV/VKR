@@ -3,7 +3,7 @@
 
 """
 __author__ = "_FEAR_MOV_"
-__version__ = 1.0
+__version__ = 0.5
 # Импортируемые библиотеки----------------------------------------------------------------------------------------------
 import psycopg2
 from psycopg2.extras import DictCursor  # Для получения ответа из бд в виде словаря
@@ -11,8 +11,8 @@ import redis
 import sys
 import json
 import consul
-# import daemon
-# import time
+import daemon
+import time
 import platform
 
 
@@ -114,15 +114,15 @@ config = parser_config(sys.argv)
 
 # Техническая переменная для отслеживания количества перезаписей
 k = 0
-"""
-if config[daemon]:
+
+if config["daemon"]:
     with daemon.DaemonContext():
         while True:
             k += 1
             main()
             time.sleep(30)
-else:"""
-main()
+else:
+    main()
 
 # Альфа версия (Не смотреть)--------------------------------------------------------------------------------------------
 """
