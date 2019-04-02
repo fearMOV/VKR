@@ -3,6 +3,7 @@
 
 """
 __author__ = "_FEAR_MOV_"
+__version__ = 1.0
 # Импортируемые библиотеки----------------------------------------------------------------------------------------------
 import psycopg2
 from psycopg2.extras import DictCursor  # Для получения ответа из бд в виде словаря
@@ -12,6 +13,7 @@ import json
 import consul
 # import daemon
 # import time
+import platform
 
 
 # Функции---------------------------------------------------------------------------------------------------------------
@@ -102,11 +104,12 @@ def main():
         port=config["consul"]["port"],
         dc=config["consul"]["dc"]
     )
-    print(c.kv.put("log", my_json))
+    key = "Balancer/" + platform.node()
+    print(c.kv.put(key, my_json))
 
 
 # Тело программы--------------------------------------------------------------------------------------------------------
-# Создаём словари для подключенний к PostgreSQL, Redis, Consul
+# Создаём словарь с конфигом
 config = parser_config(sys.argv)
 
 # Техническая переменная для отслеживания количества перезаписей
