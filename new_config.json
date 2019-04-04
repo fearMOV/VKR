@@ -1,0 +1,22 @@
+{
+  "daemon": true,
+  "timer": 30,
+  "redis": {
+    "host": "172.16.200.211",
+    "port": 6379,
+    "db": 0
+  },
+  "relation_db": {
+    "type_db": "postgresql",
+    "dbname": "naumendb",
+    "host": "172.16.200.211",
+    "port": "5432",
+    "user": "naucrm",
+    "password": "naucrm"
+  },
+    "consul": {
+    "host": "demo.consul.io",
+    "port": 80,
+    "dc": "dc1"
+  }
+}

@@ -1,5 +1,6 @@
 {
-  "daemon": true,
+  "daemon": false,
+  "timer": 30,
   "redis": {
     "host": "172.16.200.211",
     "port": 6379,
