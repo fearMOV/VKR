@@ -14,6 +14,7 @@ import consul
 # import daemon
 # import time
 import platform
+import logging
 
 
 # Функции---------------------------------------------------------------------------------------------------------------
@@ -46,6 +47,19 @@ def main():
     :return: Ничего не возвращает
     """
     global k, config
+
+    logging.basicConfig(**config["logging"])
+
+    logging.debug("This is a debug message")
+    logging.info("Informational message")
+    logging.error("An error has happened!")
+
+    log = logging.getLogger("ex")
+
+    try:
+        raise RuntimeError
+    except RuntimeError:
+        log.error("Error!")
 
     # Переменная для формирования JSON файла
     data_json = {}
@@ -87,20 +101,23 @@ def main():
     online_agents = conn_redis.hgetall("online_agents:substate:normal")
     new_online_agents = {}
     for item in online_agents.items():
-        key, value = map(str, item)
+        key, value = map(decode_bytes_in_str, item)
         new_online_agents[key] = value
     data_json["online_agents:substate:normal"] = new_online_agents
 
     # Расчетное время ожидания (EWT) по каждой очереди
-    # Запрашиваем id проктов
-    project_ids = conn_redis.smembers("project_config:projects_set")
+    project_ids = conn_redis.smembers("project_config:projects_set")  # Запрашиваем id проктов
+    ewt = {}
     print(project_ids)
     for project_id in project_ids:
         project_id = decode_bytes_in_str(project_id)
         print(project_id)
+        ewt[project_id] = {}
         s = str(conn_redis.get("project_config:%s:mean_wait" % project_id))
         s = decode_bytes_in_str(s)
+        ewt[project_id]["ewt"] = s
         print(s)
+    data_json["projects_id"] = [ewt]
 
     # Создаём json
     data_json["param"] = k

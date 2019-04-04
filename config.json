@@ -1,6 +1,10 @@
 {
   "daemon": false,
   "timer": 30,
+  "logging":{
+    "filename": "sample.log",
+    "level": 10
+  },
   "redis": {
     "host": "172.16.200.211",
     "port": 6379,
