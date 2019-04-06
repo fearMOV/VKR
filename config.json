@@ -6,13 +6,13 @@
     "level": 10
   },
   "redis": {
-    "host": "172.16.200.211",
+    "host": "192.168.1.50",
     "port": 6379,
     "db": 0
   },
   "postgresql": {
     "dbname": "naumendb",
-    "host": "172.16.200.211",
+    "host": "192.168.1.50",
     "user": "naucrm",
     "password": "naucrm"
   },

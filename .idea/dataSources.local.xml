@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="dataSourceStorageLocal">
-    <data-source name="naumendb@192.168.178.3" uuid="c93b6788-5c75-4ecc-ba06-7f9a2af743a4">
+    <data-source name="naumendb@172.16.200.211" uuid="c93b6788-5c75-4ecc-ba06-7f9a2af743a4">
       <database-info product="PostgreSQL" version="9.6.12" jdbc-version="4.2" driver-name="PostgreSQL JDBC Driver" driver-version="42.2.2" dbms="POSTGRES" exact-version="9.6.12" exact-driver-version="42.2">
         <identifier-quote-string>&quot;</identifier-quote-string>
       </database-info>
