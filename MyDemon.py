@@ -3,10 +3,9 @@
 
 """
 __author__ = "_FEAR_MOV_"
-__version__ = 0.6
+__version__ = 0.7
 # Импортируемые библиотеки----------------------------------------------------------------------------------------------
 import psycopg2
-from psycopg2.extras import DictCursor  # Для получения ответа из бд в виде словаря
 import redis
 import sys
 import json
@@ -48,21 +47,18 @@ def main():
     """
     global k, config
 
-    logging.basicConfig(**config["logging"])
+    # logging.error("An error has happened!")
 
-    logging.debug("This is a debug message")
-    logging.info("Informational message")
-    logging.error("An error has happened!")
+    # log = logging.getLogger("ex")
 
-    log = logging.getLogger("ex")
+    # try:
+    #     raise RuntimeError
+    # except RuntimeError:
+    #     log.error("Error!")
 
-    try:
-        raise RuntimeError
-    except RuntimeError:
-        log.error("Error!")
-    # cursor_factory=DictCursor
     # Подключаемся к PostgreSQL и делаем запросы
     with psycopg2.connect(**config["postgresql"]) as conn:
+        conn.set_client_encoding('UTF8')
         with conn.cursor() as cursor:
             # Расчёт уровня сервиса SL
             cursor.execute(
@@ -72,8 +68,7 @@ def main():
                 GROUP BY project_id"
             )
             timed_answering_calls = {key: value for key, value in cursor}
-            for row in cursor:
-                print(row)
+            logging.debug("Cвоевременно отвеченные вызовы: {}".format(timed_answering_calls))
 
             cursor.execute(
                 "SELECT project_id, count(session_id) \
@@ -82,8 +77,11 @@ def main():
                 GROUP BY project_id"
             )
             queued_calls_without_irrelevant_missed_calls = {key: value for key, value in cursor}
+            logging.debug("Направленные в очередь вызовы за вычетом значения показателя \
+Неактуальные пропущенные вызовы: {}".format(queued_calls_without_irrelevant_missed_calls))
             sl_projects = {key: value / queued_calls_without_irrelevant_missed_calls[key] for key, value in
                            timed_answering_calls.items()}
+            logging.debug("Project_id: sl - {}".format(sl_projects))
             del timed_answering_calls
             del queued_calls_without_irrelevant_missed_calls
 
@@ -93,23 +91,22 @@ def main():
     # Расчетное время ожидания (EWT) по каждой очереди
     project_ids = conn_redis.smembers("project_config:projects_set")  # Запрашиваем id проктов
     ewt = {}
-    print(project_ids)
+    logging.debug("ID проектов из redis: {}".format(project_ids))
     for project_id in project_ids:
         project_id = decode_bytes_in_str(project_id)
-        print(project_id)
-        ewt[project_id] = {}
-        s = str(conn_redis.get("project_config:%s:mean_wait" % project_id))
+        s = conn_redis.get("project_config:%s:mean_wait" % project_id)
         s = decode_bytes_in_str(s)
         ewt[project_id] = s
-        print(ewt)
+    logging.debug("EWT: {}".format(ewt))
 
     # Переменная для формирования JSON файла
-    data_json = {}
+    data_json = dict()
     # Заполняем переменную
     data_json["sl_instalation"] = sum(sl_projects.values())
     data_json["projects"] = []
     for key, value in sl_projects.items():
         data_json["projects"] += [{key: [{"el": value, "ewt": ewt[key]}]}]
+    logging.debug("Файл json: {}".format(data_json))
 
     # Создаём json
     data_json["param"] = k
@@ -124,6 +121,10 @@ def main():
 # Тело программы--------------------------------------------------------------------------------------------------------
 # Создаём словарь с конфигом
 config = parser_config(*sys.argv)
+
+# Логирование
+logging.basicConfig(**config["logging"])
+logging.debug("Конфигурационный файл: {}".format(config))
 # Техническая переменная для отслеживания количества перезаписей
 k = 0
 """
@@ -132,6 +133,7 @@ if config["daemon"]:
         while True:
             k += 1
             main()
+            logging.debug("Сон {}".format(config["timer"]))
             time.sleep(config["timer"])
 else:"""
 main()
