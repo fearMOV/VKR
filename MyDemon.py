@@ -14,26 +14,10 @@ import consul
 # import time
 import platform
 import logging
+import argparse
 
 
 # Функции---------------------------------------------------------------------------------------------------------------
-def parser_config(*argvs):
-    """
-    Парсим конфигурационный файл.
-
-    :param argvs: принимает аргументы из командной строки
-    нужно для поиска -c, после которой указвается путь к конфигурационному файлу
-
-    :return: возвращает словарь с конфигом
-    """
-    index = 0
-    if "-c" in argvs:
-        index = argvs.index("-c") + 1
-    with open("config.json" if index == 0 else argvs[index]) as inf:
-        config_json = json.load(inf)
-    return config_json
-
-
 def decode_bytes_in_str(x):
     x = str(x)
     return x[2:len(x) - 1]
@@ -68,7 +52,7 @@ def main():
                 GROUP BY project_id"
             )
             timed_answering_calls = {key: value for key, value in cursor}
-            logging.debug("Cвоевременно отвеченные вызовы: {}".format(timed_answering_calls))
+            logger.debug("Cвоевременно отвеченные вызовы: {}".format(timed_answering_calls))
 
             cursor.execute(
                 "SELECT project_id, count(session_id) \
@@ -77,11 +61,11 @@ def main():
                 GROUP BY project_id"
             )
             queued_calls_without_irrelevant_missed_calls = {key: value for key, value in cursor}
-            logging.debug("Направленные в очередь вызовы за вычетом значения показателя \
+            logger.debug("Направленные в очередь вызовы за вычетом значения показателя \
 Неактуальные пропущенные вызовы: {}".format(queued_calls_without_irrelevant_missed_calls))
             sl_projects = {key: value / queued_calls_without_irrelevant_missed_calls[key] for key, value in
                            timed_answering_calls.items()}
-            logging.debug("Project_id: sl - {}".format(sl_projects))
+            logger.debug("Project_id: sl - {}".format(sl_projects))
             del timed_answering_calls
             del queued_calls_without_irrelevant_missed_calls
 
@@ -91,13 +75,13 @@ def main():
     # Расчетное время ожидания (EWT) по каждой очереди
     project_ids = conn_redis.smembers("project_config:projects_set")  # Запрашиваем id проктов
     ewt = {}
-    logging.debug("ID проектов из redis: {}".format(project_ids))
+    logger.debug("ID проектов из redis: {}".format(project_ids))
     for project_id in project_ids:
         project_id = decode_bytes_in_str(project_id)
         s = conn_redis.get("project_config:%s:mean_wait" % project_id)
         s = decode_bytes_in_str(s)
         ewt[project_id] = s
-    logging.debug("EWT: {}".format(ewt))
+    logger.debug("EWT: {}".format(ewt))
 
     # Переменная для формирования JSON файла
     data_json = dict()
@@ -106,7 +90,7 @@ def main():
     data_json["projects"] = []
     for key, value in sl_projects.items():
         data_json["projects"] += [{key: [{"el": value, "ewt": ewt[key]}]}]
-    logging.debug("Файл json: {}".format(data_json))
+    logger.debug("Файл json: {}".format(data_json))
 
     # Создаём json
     data_json["param"] = k
@@ -119,12 +103,34 @@ def main():
 
 
 # Тело программы--------------------------------------------------------------------------------------------------------
-# Создаём словарь с конфигом
-config = parser_config(*sys.argv)
+# Настройка логирования
+logging.basicConfig(filename="sample.log", level=10)
+logging.Formatter()
+if __name__ != "__main__":
+    logger = logging.getLogger(__name__)
+else:
+    logger = logging.getLogger("root")
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.CRITICAL)
+logger.addHandler(handler)
 
-# Логирование
-logging.basicConfig(**config["logging"])
-logging.debug("Конфигурационный файл: {}".format(config))
+# Парсим конфигурационный файл
+try:
+    index = 0
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-cf", "--config_file", nargs="?", const="config.json", default="config.json",
+                        help="Опция для подключения конфигурационного файла, лежащего вне папки со скриптом")
+    with open(parser.parse_args().config_file) as inf:
+        config = json.load(inf)
+except FileNotFoundError:
+    logger.critical("Конфигурационный файл не найден")
+    sys.exit(1)
+except Exception as ex:
+    print(sys.exc_info())
+    sys.exit(2)
+logger.debug("Конфигурационный файл: {}".format(config))
+
+
 # Техническая переменная для отслеживания количества перезаписей
 k = 0
 """

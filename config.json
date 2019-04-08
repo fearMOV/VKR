@@ -1,18 +1,14 @@
 {
   "daemon": false,
   "timer": 30,
-  "logging":{
-    "filename": "sample.log",
-    "level": 10
-  },
   "redis": {
-    "host": "192.168.1.50",
+    "host": "172.16.200.211",
     "port": 6379,
     "db": 0
   },
   "postgresql": {
     "dbname": "naumendb",
-    "host": "192.168.1.50",
+    "host": "172.16.200.211",
     "user": "naucrm",
     "password": "naucrm"
   },
@@ -20,5 +16,6 @@
     "host": "demo.consul.io",
     "port": 80,
     "dc": "dc1"
-  }
+  },
+  "pae": "asd"
 }
