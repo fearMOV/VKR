@@ -16,6 +16,5 @@
     "host": "demo.consul.io",
     "port": 80,
     "dc": "dc1"
-  },
-  "pae": "asd"
+  }
 }
