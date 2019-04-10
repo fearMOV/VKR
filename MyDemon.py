@@ -93,49 +93,60 @@ def main():
 
 # Тело программы--------------------------------------------------------------------------------------------------------
 # Парсим аргументы из консоли, переданные при запуске скрипта
-parser = argparse.ArgumentParser()  # Создаём объект класса argparse
-parser.add_argument(  # Добавляем аргумент
-    "-cf",  # -cf получаемый из консоли
-    "--config_file",  # в программе будет переменная config_file
-    nargs="?",  # аргумента может не быть, или есть но не передано значение
-    const="config.json",  # если аргумент есть, но нет значения, то передаётся config.json
-    default="config.json",  # если аргумента нет, то передаём как настройку по умолчанию config.json
-    help="Опция для подключения конфигурационного файла, лежащего вне папки со скриптом"  # выводится при -h
-)
-parser.add_argument(
-    "-lf",
-    "--log_file",
-    nargs="?",
-    const="sample.log",
-    default="sample.log",
-    help="Опция для создания лог файла не по умолчанию"
-)
-parser.add_argument(
-    "-ll",
-    "--log_level",
-    nargs="?",
-    const=10,
-    default=10,
-    help="Опция для создания лог файла не по умолчанию"
-)
-config_args = parser.parse_args()
+try:
+    parser = argparse.ArgumentParser()  # Создаём объект класса argparse
+    parser.add_argument(  # Добавляем аргумент
+        "-cf",  # -cf получаемый из консоли
+        "--config_file",  # в программе будет переменная config_file
+        nargs="?",  # аргумента может не быть, или есть но не передано значение
+        const="config.json",  # если аргумент есть, но нет значения, то передаётся config.json
+        default="config.json",  # если аргумента нет, то передаём как настройку по умолчанию config.json
+        help="Опция для подключения конфигурационного файла, лежащего вне папки со скриптом"  # выводится при -h
+    )
+    parser.add_argument(
+        "-lf",
+        "--log_file",
+        nargs="?",
+        const="sample.log",
+        default="sample.log",
+        help="Опция для создания лог файла не по умолчанию"
+    )
+    parser.add_argument(
+        "-ll",
+        "--log_level",
+        nargs="?",
+        const=10,
+        default=10,
+        help="Опция для создания лог файла не по умолчанию"
+    )
+    config_args = parser.parse_args()
 
-# Настройка логирования
-if __name__ == "__main__":  # Если программа запущена как скрипт, то
-    logger = logging.getLogger("root")  # присваивем имя логеру root
-else:
-    logger = logging.getLogger(__name__)  # а если запущен как модуль, то даём название логеру, как у модуля
-# Настройка логирования в файл
-logging.basicConfig(
-    filename=config_args.log_file,  # Название файла лога
-    level=int(config_args.log_level),  # Уровень логирования
-    format='%(levelname)s - %(name)s - %(asctime)s: %(message)s',  # Задаём формат записи
-    datefmt="%Y-%m-%d %H:%M:%S"  # Задаём формат даты и времени
-)
-# Выводим критические ошибки на консоль
-handler_stdout = logging.StreamHandler(sys.stdout)  # Выводим данные на консоль
-handler_stdout.setLevel(logging.ERROR)  # Задаём уровень выводимых ошибок критический, закрывающие программу
-logger.addHandler(handler_stdout)  # Добавляем объект handler к logger
+    # Настройка логирования
+    if __name__ == "__main__":  # Если программа запущена как скрипт, то
+        logger = logging.getLogger("root")  # присваивем имя логеру root
+    else:
+        logger = logging.getLogger(__name__)  # а если запущен как модуль, то даём название логеру, как у модуля
+    # Настройка логирования в файл
+    logging.basicConfig(
+        filename=config_args.log_file,  # Название файла лога
+        level=int(config_args.log_level),  # Уровень логирования
+        format='%(levelname)s - %(name)s - %(asctime)s: %(message)s',  # Задаём формат записи
+        datefmt="%Y-%m-%d %H:%M:%S"  # Задаём формат даты и времени
+    )
+    # Выводим критические ошибки на консоль
+    handler_stdout = logging.StreamHandler(sys.stdout)  # Выводим данные на консоль
+    handler_stdout.setLevel(logging.CRITICAL)  # Задаём уровень выводимых ошибок критический, закрывающие программу
+    logger.addHandler(handler_stdout)  # Добавляем объект handler к logger
+except IOError:
+    logger.critical("Ошибка при открытии/создании файла логов")  # Выводим на экран ошибку
+    logger.exception("")  # Логируем ошибку как уровень ERROR
+    logging.shutdown()  # Закрываем логирование
+    sys.exit(1)  # Прерываем программу с ошибкой 1
+except Exception:
+    logger.critical("Ошибка при создании логера или парсинга аргументов из консоли.")  # Выводим на экран ошибку
+    logger.exception('')  # Логируем ошибку как уровень ERROR
+    logging.shutdown()  # Закрываем логирование
+    sys.exit(1)  # Прерываем программу с ошибкой 2
 
 # Схема файла json, которую мы ожидаем
 schema_json = {
@@ -178,8 +189,9 @@ try:  # Ловим ошибки
         config = json.load(inf)  # Считываем файл и преобразовываем из формата json в словари и списки формата python
         jsonschema.validate(config, schema_json)  # Производим валидацию полученного файла json
         logger.info("Конфигурационный файл получен")
-except FileNotFoundError:  # Ловим ошибку отсутствия файла
-    logger.exception("Конфигурационный файл не найден")  # Логируем ошибку как уровень ERROR
+except IOError:  # Ловим ошибки связаные с файлом
+    logger.critical("Ошибка при открытии конфигурационного файла")
+    logger.exception("")  # Логируем ошибку как уровень ERROR
     logging.shutdown()  # Закрываем логирование
     sys.exit(1)  # Прерываем программу с ошибкой 1
 except jsonschema.exceptions.ValidationError:
@@ -187,8 +199,9 @@ except jsonschema.exceptions.ValidationError:
     logger.exception("Ошибка валидации")
     logging.shutdown()
     sys.exit(2)
-except Exception as ex:  # Ловим и выводим другие ошибки
-    logger.exception('Неизвестная ошибка при парсинге конфигурационного файла.')  # Логируем ошибку как уровень ERROR
+except Exception:  # Ловим и выводим другие ошибки
+    logger.critical("Неизвестная ошибка при парсинге конфигурационного файла.")  # Выводим на экран ошибку
+    logger.exception('')  # Логируем ошибку как уровень ERROR
     logging.shutdown()  # Закрываем логирование
     sys.exit(2)  # Прерываем программу с ошибкой 2
 logger.debug("Конфигурационный файл получен: {}".format(config))  # Логируем данные из конфигурационного файла
