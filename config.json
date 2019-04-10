@@ -9,6 +9,7 @@
   "postgresql": {
     "dbname": "naumendb",
     "host": "172.16.200.211",
+    "port": 5432,
     "user": "naucrm",
     "password": "naucrm"
   },
