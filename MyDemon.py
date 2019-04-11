@@ -18,20 +18,97 @@ import datetime  # Для того чтобы узнать текущее вре
 import jsonschema  # Для валидации файла json
 
 
-# Классы ошибок---------------------------------------------------------------------------------------------------------
-class ErrorPostgreSQL(psycopg2.Error):
-    pass
-
-
-class ErrorRedis(redis.exceptions):
-    pass
-
-
-class ErrorConsul(consul.ConsulException):
-    pass
-
-
 # Функции---------------------------------------------------------------------------------------------------------------
+def arg_parse():
+    # Парсим аргументы из консоли, переданные при запуске скрипта
+    parser = argparse.ArgumentParser()  # Создаём объект класса argparse
+    parser.add_argument(  # Добавляем аргумент
+        "-cf",  # -cf получаемый из консоли
+        "--config_file",  # в программе будет переменная config_file
+        nargs="?",  # аргумента может не быть, или есть но не передано значение
+        const="config.json",  # если аргумент есть, но нет значения, то передаётся config.json
+        default="config.json",  # если аргумента нет, то передаём как настройку по умолчанию config.json
+        help="Опция для подключения конфигурационного файла, лежащего вне папки со скриптом"  # выводится при -h
+    )
+    parser.add_argument(
+        "-lf",
+        "--log_file",
+        nargs="?",
+        const="sample.log",
+        default="sample.log",
+        help="Опция для создания лог файла не по умолчанию"
+    )
+    parser.add_argument(
+        "-ll",
+        "--log_level",
+        nargs="?",
+        const=10,
+        default=10,
+        help="Опция для создания лог файла не по умолчанию"
+    )
+    return parser.parse_args()
+
+
+def create_logger(config_args):
+    # Настройка логирования
+    # Настройка логирования в файл
+    logging.basicConfig(
+        filename=config_args.log_file,  # Название файла лога
+        level=int(config_args.log_level),  # Уровень логирования
+        format='%(levelname)s - %(name)s - %(asctime)s: %(message)s',  # Задаём формат записи
+        datefmt="%Y-%m-%d %H:%M:%S"  # Задаём формат даты и времени
+    )
+    # Выводим критические ошибки на консоль
+    handler_stdout = logging.StreamHandler(sys.stdout)  # Выводим данные на консоль
+    handler_stdout.setLevel(logging.CRITICAL)  # Задаём уровень выводимых ошибок критический, закрывающие программу
+    logger.addHandler(handler_stdout)  # Добавляем объект handler к logger
+
+
+def config_validate(config_args):
+    # Парсим конфигурационный файл
+    # Схема файла json, которую мы ожидаем
+    schema_json = {
+        "type": "object",
+        "properties": {
+            "demon": {"type": "boolean"},
+            "timer": {"type": "integer"},
+            "redis": {
+                "type": "object",
+                "properties": {
+                    "host": {"type": "string",
+                             "pattern": "^(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])(\.(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])){3}$|localhost$"},
+                    "port": {"type": "integer"},
+                    "db": {"type": "integer"}
+                }
+            },
+            "postgresql": {
+                "type": "object",
+                "properties": {
+                    "dbname": {"type": "string"},
+                    "host": {"type": "string",
+                             "pattern": "^(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])(\.(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])){3}$|localhost$"},
+                    "port": {"type": "integer"},
+                    "user": {"type": "string"},
+                    "password": {"type": "string"}
+                }
+            },
+            "consul": {
+                "type": "object",
+                "properties": {
+                    "host": {"type": "string"},
+                    "port": {"type": "integer"},
+                    "dc": {"type": "string"}
+                }
+            }
+        }
+    }
+    with open(config_args.config_file) as inf:  # Открывем конфигурационный файл.
+        config = json.load(inf)  # Считываем файл и преобразовываем из формата json в словари и списки формата python
+        jsonschema.validate(config, schema_json)  # Производим валидацию полученного файла json
+        logger.info("Конфигурационный файл получен")
+    return config
+
+
 def get_from_postgresql():
     # Подключаемся к PostgreSQL и делаем запросы
     with psycopg2.connect(**config["postgresql"]) as conn:  # Подключаемся к PostgreSQL
@@ -62,6 +139,7 @@ def get_from_postgresql():
             # Удаляем не нужные словари
             # del timed_answering_calls
             # del queued_calls_without_irrelevant_missed_calls
+            logger.info("Запросы к PostgreSQL выполнены")  # Логируем успешное выполнение запросов
     return sl_projects
 
 
@@ -115,16 +193,15 @@ def main():
     """
     try:
         sl_projects = get_from_postgresql()
-        logger.info("Запросы к PostgreSQL выполнены")  # Логируем успешное выполнение запросов
         ewt = get_from_redis()
         metrics_json = convert_to_json(sl_projects, ewt)
         send_report(metrics_json)
-    except ErrorPostgreSQL:
+    except psycopg2.Error:
         logger.critical("Не получен доступ к PostgreSQL.")  # Выводим на экран ошибку
         logger.exception('')  # Логируем ошибку как уровень ERROR
         logging.shutdown()  # Закрываем логирование
         sys.exit(6)  # Прерываем программу с ошибкой 2
-    except ErrorRedis:
+    except redis.RedisError:
         logger.critical("Не получен доступ к Redis.")  # Выводим на экран ошибку
         logger.exception('')  # Логируем ошибку как уровень ERROR
         logging.shutdown()  # Закрываем логирование
@@ -139,7 +216,7 @@ def main():
         logger.exception('')  # Логируем ошибку как уровень ERROR
         logging.shutdown()  # Закрываем логирование
         sys.exit(9)  # Прерываем программу с ошибкой 2
-    except ErrorConsul:
+    except consul.ConsulException:
         logger.critical("Ошибка при работе с Consul.")  # Выводим на экран ошибку
         logger.exception('')  # Логируем ошибку как уровень ERROR
         logging.shutdown()  # Закрываем логирование
@@ -152,121 +229,32 @@ def main():
 
 
 # Тело программы--------------------------------------------------------------------------------------------------------
-# Парсим аргументы из консоли, переданные при запуске скрипта
-try:
-    parser = argparse.ArgumentParser()  # Создаём объект класса argparse
-    parser.add_argument(  # Добавляем аргумент
-        "-cf",  # -cf получаемый из консоли
-        "--config_file",  # в программе будет переменная config_file
-        nargs="?",  # аргумента может не быть, или есть но не передано значение
-        const="config.json",  # если аргумент есть, но нет значения, то передаётся config.json
-        default="config.json",  # если аргумента нет, то передаём как настройку по умолчанию config.json
-        help="Опция для подключения конфигурационного файла, лежащего вне папки со скриптом"  # выводится при -h
-    )
-    parser.add_argument(
-        "-lf",
-        "--log_file",
-        nargs="?",
-        const="sample.log",
-        default="sample.log",
-        help="Опция для создания лог файла не по умолчанию"
-    )
-    parser.add_argument(
-        "-ll",
-        "--log_level",
-        nargs="?",
-        const=10,
-        default=10,
-        help="Опция для создания лог файла не по умолчанию"
-    )
-    config_args = parser.parse_args()
+if __name__ == "__main__":  # Если программа запущена как скрипт, то
+    logger = logging.getLogger("root")  # присваивем имя логеру root
+else:
+    logger = logging.getLogger(__name__)  # а если запущен как модуль, то даём название логеру, как у модуля
 
-    # Настройка логирования
-    if __name__ == "__main__":  # Если программа запущена как скрипт, то
-        logger = logging.getLogger("root")  # присваивем имя логеру root
-    else:
-        logger = logging.getLogger(__name__)  # а если запущен как модуль, то даём название логеру, как у модуля
-    # Настройка логирования в файл
-    logging.basicConfig(
-        filename=config_args.log_file,  # Название файла лога
-        level=int(config_args.log_level),  # Уровень логирования
-        format='%(levelname)s - %(name)s - %(asctime)s: %(message)s',  # Задаём формат записи
-        datefmt="%Y-%m-%d %H:%M:%S"  # Задаём формат даты и времени
-    )
-    # Выводим критические ошибки на консоль
-    handler_stdout = logging.StreamHandler(sys.stdout)  # Выводим данные на консоль
-    handler_stdout.setLevel(logging.CRITICAL)  # Задаём уровень выводимых ошибок критический, закрывающие программу
-    logger.addHandler(handler_stdout)  # Добавляем объект handler к logger
+try:
+    config_args = arg_parse()
+    create_logger(config_args)
+    config = config_validate(config_args)
 except IOError:
-    logger.critical("Ошибка при открытии/создании файла логов")  # Выводим на экран ошибку
+    logger.critical("Ошибка при открытии/создании файлов")  # Выводим на экран ошибку
     logger.exception("")  # Логируем ошибку как уровень ERROR
     logging.shutdown()  # Закрываем логирование
     sys.exit(1)  # Прерываем программу с ошибкой 1
-except Exception:
-    logger.critical("Ошибка при создании логера или парсинга аргументов из консоли.")  # Выводим на экран ошибку
-    logger.exception('')  # Логируем ошибку как уровень ERROR
-    logging.shutdown()  # Закрываем логирование
-    sys.exit(2)  # Прерываем программу с ошибкой 2
-
-# Схема файла json, которую мы ожидаем
-schema_json = {
-    "type": "object",
-    "properties": {
-        "demon": {"type": "boolean"},
-        "timer": {"type": "integer"},
-        "redis": {
-            "type": "object",
-            "properties": {
-                "host": {"type": "string", "pattern": "^(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])(\.(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])){3}$|localhost$"},
-                "port": {"type": "integer"},
-                "db": {"type": "integer"}
-            }
-        },
-        "postgresql": {
-            "type": "object",
-            "properties": {
-                "dbname": {"type": "string"},
-                "host": {"type": "string", "pattern": "^(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])(\.(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])){3}$|localhost$"},
-                "port": {"type": "integer"},
-                "user": {"type": "string"},
-                "password": {"type": "string"}
-            }
-        },
-        "consul": {
-            "type": "object",
-            "properties": {
-                "host": {"type": "string"},
-                "port": {"type": "integer"},
-                "dc": {"type": "string"}
-            }
-        }
-    }
-}
-
-# Парсим конфигурационный файл
-try:  # Ловим ошибки
-    with open(config_args.config_file) as inf:  # Открывем конфигурационный файл.
-        config = json.load(inf)  # Считываем файл и преобразовываем из формата json в словари и списки формата python
-        jsonschema.validate(config, schema_json)  # Производим валидацию полученного файла json
-        logger.info("Конфигурационный файл получен")
-except IOError:  # Ловим ошибки связаные с файлом
-    logger.critical("Ошибка при открытии конфигурационного файла")
-    logger.exception("")  # Логируем ошибку как уровень ERROR
-    logging.shutdown()  # Закрываем логирование
-    sys.exit(3)  # Прерываем программу с ошибкой 1
 except jsonschema.exceptions.ValidationError:
     logger.critical("Файл конфигурации не прошёл валидацию")
     logger.exception("Ошибка валидации")
     logging.shutdown()
     sys.exit(4)
 except Exception:  # Ловим и выводим другие ошибки
-    logger.critical("Неизвестная ошибка при парсинге конфигурационного файла.")  # Выводим на экран ошибку
+    logger.critical("Неизвестная ошибка при настройке программы.")  # Выводим на экран ошибку
     logger.exception('')  # Логируем ошибку как уровень ERROR
     logging.shutdown()  # Закрываем логирование
     sys.exit(5)  # Прерываем программу с ошибкой 2
 logger.debug("Конфигурационный файл получен: {}".format(config))  # Логируем данные из конфигурационного файла
 
-# Техническая переменная для отслеживания количества перезаписей
 """
 if config["daemon"]:  # Если в конфигурационном файле в daemon дано значение true, то
     with daemon.DaemonContext():  # запускаем демона
@@ -275,6 +263,8 @@ if config["daemon"]:  # Если в конфигурационном файле 
             logging.debug("Сон {}".format(config["timer"]))  # Логируем на сколько производится прерывание
             time.sleep(config["timer"])  # Ждём указанное в конфигурационном файле время
 else:"""  # Если false, то
+
+
 main()  # Выполняем программу один раз
 logging.shutdown()  # Закрываем логирование
 sys.exit(0)
