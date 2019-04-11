@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="353f1735-d5a2-4bfb-9e18-cafe2a6a10f4" name="Default Changelist" comment="">
+    <list default="true" id="353f1735-d5a2-4bfb-9e18-cafe2a6a10f4" name="Default Changelist" comment="Ловлю ошибки при парсинге аргументов из консоли и при создании логера.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MyDemon.py" beforeDir="false" afterPath="$PROJECT_DIR$/MyDemon.py" afterDir="false" />
     </list>
@@ -39,8 +39,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/MyDemon.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="76">
-              <caret line="60" column="4" selection-start-line="60" selection-start-column="4" selection-end-line="60" selection-end-column="4" />
+            <state relative-caret-position="676">
+              <caret line="84" column="58" selection-start-line="84" selection-start-column="58" selection-end-line="84" selection-end-column="58" />
               <folding>
                 <element signature="e#261#303#0" expanded="true" />
               </folding>
@@ -63,7 +63,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/TestSQLAlchemy.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="482">
+            <state relative-caret-position="510">
               <caret line="35" column="13" selection-start-line="35" selection-start-column="13" selection-end-line="35" selection-end-column="13" />
               <folding>
                 <element signature="e#0#9#1" />
@@ -77,7 +77,7 @@
         <entry file="file://$PROJECT_DIR$/new_config.json">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="68">
-              <caret line="4" column="13" lean-forward="true" selection-start-line="4" selection-start-column="13" selection-end-line="4" selection-end-column="27" />
+              <caret line="4" column="27" selection-start-line="4" selection-start-column="27" selection-end-line="4" selection-end-column="27" />
             </state>
           </provider>
         </entry>
@@ -85,8 +85,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/config.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="85">
-              <caret line="5" column="17" lean-forward="true" selection-start-line="5" selection-start-column="17" selection-end-line="5" selection-end-column="17" />
+            <state relative-caret-position="170">
+              <caret line="10" column="29" lean-forward="true" selection-start-line="10" selection-start-column="29" selection-end-line="10" selection-end-column="29" />
             </state>
           </provider>
         </entry>
@@ -94,8 +94,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/MyDemon.log">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-4335">
-              <caret column="70" selection-start-column="70" selection-end-column="70" />
+            <state relative-caret-position="-293">
+              <caret line="591" lean-forward="true" selection-start-line="591" selection-end-line="591" />
             </state>
           </provider>
         </entry>
@@ -132,6 +132,7 @@
         <option value="$PROJECT_DIR$/sample.log" />
         <option value="$PROJECT_DIR$/MyDemon.log" />
         <option value="$PROJECT_DIR$/new_config.json" />
+        <option value="$PROJECT_DIR$/123.py" />
         <option value="$PROJECT_DIR$/config.json" />
         <option value="$PROJECT_DIR$/MyDemon.py" />
       </list>
@@ -184,6 +185,28 @@
     </option>
   </component>
   <component name="RunManager" selected="Python.MyDemon">
+    <configuration name="123" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="VKR" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/123.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="AdapterPostgreSQL" type="PythonConfigurationType" factoryName="Python">
       <module name="VKR" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -277,10 +300,12 @@
       <item itemvalue="Python.myqredis" />
       <item itemvalue="Python.MyDemon" />
       <item itemvalue="Python.TestSQLAlchemy" />
+      <item itemvalue="Python.123" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.MyDemon" />
+        <item itemvalue="Python.123" />
         <item itemvalue="Python.TestSQLAlchemy" />
         <item itemvalue="Python.myqredis" />
       </list>
@@ -329,7 +354,8 @@
       <workItem from="1554673593322" duration="2334000" />
       <workItem from="1554703145673" duration="23869000" />
       <workItem from="1554789795150" duration="16508000" />
-      <workItem from="1554876026943" duration="11273000" />
+      <workItem from="1554876026943" duration="14334000" />
+      <workItem from="1554898003961" duration="6827000" />
     </task>
     <task id="LOCAL-00001" summary="Данные в консул теперь сохраняются в папку Balancer и в качестве ключа записывается hostname машины, в качестве значения записываются полученные из БД метрики">
       <created>1554193963414</created>
@@ -401,17 +427,24 @@
       <option name="project" value="LOCAL" />
       <updated>1554886146260</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Ловлю ошибки при парсинге аргументов из консоли и при создании логера.">
+      <created>1554887789544</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1554887789544</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="209111000" />
+    <option name="totallyTimeSpent" value="218999000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-7" y="-7" width="1295" height="695" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.16248989" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.16491511" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -500,12 +533,14 @@
     <MESSAGE value="Написаны коментарии и испралена ошибка с логированием." />
     <MESSAGE value="Переписан запрос к БД. Старый закоментирован. ДОбавлено получение аргументов -lf и -ll для первоначальной настройки логирования. -lf - название файла логирования. -ll для настройки уровня логирования" />
     <MESSAGE value="Добавлена валидация json файла. Ошибка валидатора ловится и логируется. IP-адреса/localhost проверяются с помощью регулярки. Страый запрос к БД удалён. Удалена функция декодирования, заменена на стандартный инструментарий decode()." />
-    <option name="LAST_COMMIT_MESSAGE" value="Добавлена валидация json файла. Ошибка валидатора ловится и логируется. IP-адреса/localhost проверяются с помощью регулярки. Страый запрос к БД удалён. Удалена функция декодирования, заменена на стандартный инструментарий decode()." />
+    <MESSAGE value="Ловлю ошибки при парсинге аргументов из консоли и при создании логера." />
+    <option name="LAST_COMMIT_MESSAGE" value="Ловлю ошибки при парсинге аргументов из консоли и при создании логера." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/VKR$123.coverage" NAME="123 Coverage Results" MODIFIED="1554898380201" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/VKR$AdapterPostgreSQL.coverage" NAME="AdapterPostgreSQL Coverage Results" MODIFIED="1554104479367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/VKR$TestSQLAlchemy.coverage" NAME="TestSQLAlchemy Coverage Results" MODIFIED="1554295910841" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/VKR$MyDemon.coverage" NAME="MyDemon Coverage Results" MODIFIED="1554887485772" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/VKR$MyDemon.coverage" NAME="MyDemon Coverage Results" MODIFIED="1554962273060" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/myqredis.py" />
@@ -594,7 +629,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/TestSQLAlchemy.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="482">
+        <state relative-caret-position="510">
           <caret line="35" column="13" selection-start-line="35" selection-start-column="13" selection-end-line="35" selection-end-column="13" />
           <folding>
             <element signature="e#0#9#1" />
@@ -603,31 +638,41 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/new_config.json">
+    <entry file="file://$PROJECT_DIR$/123.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="68">
-          <caret line="4" column="13" lean-forward="true" selection-start-line="4" selection-start-column="13" selection-end-line="4" selection-end-column="27" />
+        <state relative-caret-position="126">
+          <caret line="11" column="27" selection-start-line="11" selection-start-column="17" selection-end-line="11" selection-end-column="27" />
+          <folding>
+            <element signature="e#0#17#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/config.json">
+    <entry file="file://$PROJECT_DIR$/new_config.json">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="85">
-          <caret line="5" column="17" lean-forward="true" selection-start-line="5" selection-start-column="17" selection-end-line="5" selection-end-column="17" />
+        <state relative-caret-position="68">
+          <caret line="4" column="27" selection-start-line="4" selection-start-column="27" selection-end-line="4" selection-end-column="27" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/MyDemon.log">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-4335">
-          <caret column="70" selection-start-column="70" selection-end-column="70" />
+        <state relative-caret-position="-293">
+          <caret line="591" lean-forward="true" selection-start-line="591" selection-end-line="591" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/config.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="170">
+          <caret line="10" column="29" lean-forward="true" selection-start-line="10" selection-start-column="29" selection-end-line="10" selection-end-column="29" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/MyDemon.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="76">
-          <caret line="60" column="4" selection-start-line="60" selection-start-column="4" selection-end-line="60" selection-end-column="4" />
+        <state relative-caret-position="676">
+          <caret line="84" column="58" selection-start-line="84" selection-start-column="58" selection-end-line="84" selection-end-column="58" />
           <folding>
             <element signature="e#261#303#0" expanded="true" />
           </folding>
