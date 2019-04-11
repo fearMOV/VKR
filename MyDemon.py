@@ -18,7 +18,95 @@ import datetime  # Для того чтобы узнать текущее вре
 import jsonschema  # Для валидации файла json
 
 
+# Классы ошибок---------------------------------------------------------------------------------------------------------
+class ErrorPostgreSQL(psycopg2.Error):
+    pass
+
+
+class ErrorRedis(redis.exceptions):
+    pass
+
+
+class ErrorConsul(consul.ConsulException):
+    pass
+
+
 # Функции---------------------------------------------------------------------------------------------------------------
+def get_from_postgresql():
+    # Подключаемся к PostgreSQL и делаем запросы
+    with psycopg2.connect(**config["postgresql"]) as conn:  # Подключаемся к PostgreSQL
+        logger.info("Подключение к БД PostgreSQL успешно")  # Логируем успешное подключение к PostgreSQL
+        conn.set_client_encoding('UTF8')  # Деодируем получаемые данные в UNICODE
+        with conn.cursor() as cursor:  # Открываем курсор для обращений к БД
+            # Расчёт уровня сервиса SL
+            cursor.execute(
+                """with timed_answering_calls as (
+                    select project_id as id_project, count(session_id)::float as tac
+                    from ns_inbound_call_data
+                    WHERE is_processed = True and is_processed_after_threshold = false
+                    group by id_project
+                ),
+                queued_calls_without_irrelevant_missed_calls as (
+                    SELECT project_id, count(session_id)::float as qcwimc
+                    FROM ns_inbound_call_data
+                    WHERE is_unblocked = True and is_shortly_abandoned = false
+                    group by project_id
+                )
+                select project_id, tac / qcwimc as sl
+                from timed_answering_calls, queued_calls_without_irrelevant_missed_calls
+                where project_id = id_project
+                group by project_id, tac, qcwimc"""
+            )
+            sl_projects = {key: float(value) for key, value in cursor}
+            logger.debug("Project_id: sl - {}".format(sl_projects))  # Логируем полученный словарь
+            # Удаляем не нужные словари
+            # del timed_answering_calls
+            # del queued_calls_without_irrelevant_missed_calls
+    return sl_projects
+
+
+def get_from_redis():
+    # Подключаемся к Redis и делаем запросы
+    conn_redis = redis.StrictRedis(**config["redis"])  # Подключаемся к БД Redis
+    logger.info("Подключение к БД Redis успешно")  # Логируем успешное подключение к БД Redis
+
+    # Расчетное время ожидания (EWT) по каждой очереди
+    project_ids = conn_redis.smembers("project_config:projects_set")  # Запрашиваем id проктов
+    ewt = {}  # Создаём словарь для хранения информации полученной из Redis
+    logger.debug("ID проектов из redis: {}".format(project_ids))  # Логируем полученыне id проектов
+    for project_id in project_ids:  # Перебираем все полученные id проектов по одному
+        project_id = project_id.decode()
+        s = conn_redis.get("project_config:%s:mean_wait" % project_id)  # Делаем запрос к Redis, для получения ewt
+        s = s.decode()  # Преобразуем полученные даныне в строку
+        ewt[project_id] = s  # Записваем в словарь типа "project_id": "ewt"
+    logger.debug("EWT: {}".format(ewt))  # Логируем полученынй словарь
+    return ewt
+
+
+def convert_to_json(sl_projects, ewt):
+    # Переменная для формирования JSON файла
+    data_json = dict()
+    data_json["time"] = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")  # Время записи данных
+    # Заполняем переменную
+    # Высчитываем SL инсталяции и записываем
+    data_json["sl_instalation"] = sum(sl_projects.values()) / len(sl_projects.values())
+    data_json["projects"] = []  # Будем создавать список проектов
+    for key, value in sl_projects.items():  # Перебираем словарь с помощью items() получаем отдельно ключ и значение
+        data_json["projects"].append({key: [{"sl": value, "ewt": ewt[key]}]})  # Создаём словарь
+    logger.debug("Файл json: {}".format(data_json))  # Логируем созданынй словарь
+
+    # Создаём json
+    metrics_json = json.dumps(data_json, indent=4)  # Преобразовываем словарь в json
+    return metrics_json
+
+
+def send_report(metrics_json):
+    # Закидывем json в consul
+    c = consul.Consul(**config["consul"])  # Подключаемся к Consul
+    key = "Balancer/" + platform.node()  # Создаём переменную ключа для передачи в Consul
+    c.kv.put(key, metrics_json)  # Передаём сгенерированный json фалй по заданному ключу в Consul
+
+
 def main():
     """
     Собираем json файл, беря данные из Redis и PostgreSQL, и выкладываем в Consul
@@ -26,77 +114,21 @@ def main():
     :return: Ничего не возвращает
     """
     try:
-        # Подключаемся к PostgreSQL и делаем запросы
-        with psycopg2.connect(**config["postgresql"]) as conn:  # Подключаемся к PostgreSQL
-            logger.info("Подключение к БД PostgreSQL успешно")  # Логируем успешное подключение к PostgreSQL
-            conn.set_client_encoding('UTF8')  # Деодируем получаемые данные в UNICODE
-            with conn.cursor() as cursor:  # Открываем курсор для обращений к БД
-                # Расчёт уровня сервиса SL
-                cursor.execute(
-                    """with timed_answering_calls as (
-                        select project_id as id_project, count(session_id)::float as tac
-                        from ns_inbound_call_data
-                        WHERE is_processed = True and is_processed_after_threshold = false
-                        group by id_project
-                    ),
-                    queued_calls_without_irrelevant_missed_calls as (
-                        SELECT project_id, count(session_id)::float as qcwimc
-                        FROM ns_inbound_call_data
-                        WHERE is_unblocked = True and is_shortly_abandoned = false
-                        group by project_id
-                    )
-                    select project_id, tac / qcwimc as sl
-                    from timed_answering_calls, queued_calls_without_irrelevant_missed_calls
-                    where project_id = id_project
-                    group by project_id, tac, qcwimc"""
-                )
-                sl_projects = {key: float(value) for key, value in cursor}
-                logger.debug("Project_id: sl - {}".format(sl_projects))  # Логируем полученный словарь
-                # Удаляем не нужные словари
-                # del timed_answering_calls
-                # del queued_calls_without_irrelevant_missed_calls
-    except Exception:
+        sl_projects = get_from_postgresql()
+        logger.info("Запросы к PostgreSQL выполнены")  # Логируем успешное выполнение запросов
+        ewt = get_from_redis()
+        metrics_json = convert_to_json(sl_projects, ewt)
+        send_report(metrics_json)
+    except ErrorPostgreSQL:
         logger.critical("Не получен доступ к PostgreSQL.")  # Выводим на экран ошибку
         logger.exception('')  # Логируем ошибку как уровень ERROR
         logging.shutdown()  # Закрываем логирование
         sys.exit(6)  # Прерываем программу с ошибкой 2
-    logger.info("Запросы к PostgreSQL выполнены")  # Логируем успешное выполнение запросов
-
-    try:
-        # Подключаемся к Redis и делаем запросы
-        conn_redis = redis.StrictRedis(**config["redis"])  # Подключаемся к БД Redis
-        logger.info("Подключение к БД Redis успешно")  # Логируем успешное подключение к БД Redis
-
-        # Расчетное время ожидания (EWT) по каждой очереди
-        project_ids = conn_redis.smembers("project_config:projects_set")  # Запрашиваем id проктов
-        ewt = {}  # Создаём словарь для хранения информации полученной из Redis
-        logger.debug("ID проектов из redis: {}".format(project_ids))  # Логируем полученыне id проектов
-        for project_id in project_ids:  # Перебираем все полученные id проектов по одному
-            project_id = project_id.decode()
-            s = conn_redis.get("project_config:%s:mean_wait" % project_id)  # Делаем запрос к Redis, для получения ewt
-            s = s.decode()  # Преобразуем полученные даныне в строку
-            ewt[project_id] = s  # Записваем в словарь типа "project_id": "ewt"
-        logger.debug("EWT: {}".format(ewt))  # Логируем полученынй словарь
-    except Exception:
-        logger.critical("Не получен доступ к PostgreSQL.")  # Выводим на экран ошибку
+    except ErrorRedis:
+        logger.critical("Не получен доступ к Redis.")  # Выводим на экран ошибку
         logger.exception('')  # Логируем ошибку как уровень ERROR
         logging.shutdown()  # Закрываем логирование
         sys.exit(7)  # Прерываем программу с ошибкой 2
-
-    try:
-        # Переменная для формирования JSON файла
-        data_json = dict()
-        data_json["time"] = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")  # Время записи данных
-        # Заполняем переменную
-        # Высчитываем SL инсталяции и записываем
-        data_json["sl_instalation"] = sum(sl_projects.values())/len(sl_projects.values())
-        data_json["projects"] = []  # Будем создавать список проектов
-        for key, value in sl_projects.items():  # Перебираем словарь с помощью items() получаем отдельно ключ и значение
-            data_json["projects"].append({key: [{"sl": value, "ewt": ewt[key]}]})  # Создаём словарь
-        logger.debug("Файл json: {}".format(data_json))  # Логируем созданынй словарь
-
-        # Создаём json
-        my_json = json.dumps(data_json, indent=4)  # Преобразовываем словарь в json
     except ZeroDivisionError:
         logger.critical("При получение SL из PostgreSQL не были получнены данные")  # Выводим на экран ошибку
         logger.exception('')  # Логируем ошибку как уровень ERROR
@@ -107,19 +139,13 @@ def main():
         logger.exception('')  # Логируем ошибку как уровень ERROR
         logging.shutdown()  # Закрываем логирование
         sys.exit(9)  # Прерываем программу с ошибкой 2
-    except Exception:
-        logger.critical("Ошибка при преобразовании данных в json формат.")  # Выводим на экран ошибку
+    except ErrorConsul:
+        logger.critical("Ошибка при работе с Consul.")  # Выводим на экран ошибку
         logger.exception('')  # Логируем ошибку как уровень ERROR
         logging.shutdown()  # Закрываем логирование
         sys.exit(10)  # Прерываем программу с ошибкой 2
-
-    try:
-        # Закидывем json в consul
-        c = consul.Consul(**config["consul"])  # Подключаемся к Consul
-        key = "Balancer/" + platform.node()  # Создаём переменную ключа для передачи в Consul
-        c.kv.put(key, my_json)  # Передаём сгенерированный json фалй по заданному ключу в Consul
     except Exception:
-        logger.critical("Ошибка при работе с Consul.")  # Выводим на экран ошибку
+        logger.critical("Неизвестная ошибка")  # Выводим на экран ошибку
         logger.exception('')  # Логируем ошибку как уровень ERROR
         logging.shutdown()  # Закрываем логирование
         sys.exit(11)  # Прерываем программу с ошибкой 2
@@ -245,7 +271,7 @@ logger.debug("Конфигурационный файл получен: {}".form
 if config["daemon"]:  # Если в конфигурационном файле в daemon дано значение true, то
     with daemon.DaemonContext():  # запускаем демона
         while True:  # Бесконечный цикл повторения
-            main()  # Выполняем основную часть программы
+            main(config)  # Выполняем основную часть программы
             logging.debug("Сон {}".format(config["timer"]))  # Логируем на сколько производится прерывание
             time.sleep(config["timer"])  # Ждём указанное в конфигурационном файле время
 else:"""  # Если false, то
