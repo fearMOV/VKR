@@ -9,16 +9,31 @@ import redis  # Для работы с Redis
 import sys  # Для работы с переменными орукжения интерпритатора python
 import json  # Для работы с форматом json
 import consul  # Для работы с консул
-# import daemon  # Для создания демона
-# import time  # Для таймаута
 import platform  # Для нахождения названия машины
 import logging  # Для логирования
 import argparse  # Для получения аргументов из консоли, переданных при запуске
 import datetime  # Для того чтобы узнать текущее время
 import jsonschema  # Для валидации файла json
+import time
+import signal
 
 
-# Функции---------------------------------------------------------------------------------------------------------------
+class GracefulKiller:
+    kill_now = False
+    restart_now = False
+
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+        #signal.signal(signal.SIGHUP, self.restart_gracefully)
+
+    def exit_gracefully(self, signum, frame):
+        self.kill_now = True
+
+    #def restart_gracefully(self, signum, frame):
+        #self.restart_now = True
+
+
 def arg_parse():
     # Парсим аргументы из консоли, переданные при запуске скрипта
     parser = argparse.ArgumentParser()  # Создаём объект класса argparse
@@ -49,8 +64,13 @@ def arg_parse():
     return parser.parse_args()
 
 
-def create_logger(config_args):
+def create_logger():
     # Настройка логирования
+    # Выводим критические ошибки на консоль
+    handler_stdout = logging.StreamHandler()  # Выводим данные на консоль
+    handler_stdout.setLevel(logging.CRITICAL)  # Задаём уровень выводимых ошибок критический, закрывающие программу
+    handler_stdout.setFormatter(logging.Formatter('%(levelname)s - %(name)s - %(asctime)s: %(message)s'))
+    logger.addHandler(handler_stdout)  # Добавляем объект handler к logger
     # Настройка логирования в файл
     logging.basicConfig(
         filename=config_args.log_file,  # Название файла лога
@@ -58,14 +78,9 @@ def create_logger(config_args):
         format='%(levelname)s - %(name)s - %(asctime)s: %(message)s',  # Задаём формат записи
         datefmt="%Y-%m-%d %H:%M:%S"  # Задаём формат даты и времени
     )
-    # Выводим критические ошибки на консоль
-    handler_stdout = logging.StreamHandler(sys.stdout)  # Выводим данные на консоль
-    handler_stdout.setLevel(logging.CRITICAL)  # Задаём уровень выводимых ошибок критический, закрывающие программу
-    logger.addHandler(handler_stdout)  # Добавляем объект handler к logger
 
 
-def config_validate(config_args):
-    # Парсим конфигурационный файл
+def config_validate():
     # Схема файла json, которую мы ожидаем
     schema_json = {
         "type": "object",
@@ -76,7 +91,7 @@ def config_validate(config_args):
                 "type": "object",
                 "properties": {
                     "host": {"type": "string",
-                             "pattern": "^(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])(\.(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])){3}$|localhost$"},
+                             "pattern": "^(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])(\.(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])){3}$|^localhost$"},
                     "port": {"type": "integer"},
                     "db": {"type": "integer"}
                 }
@@ -86,7 +101,7 @@ def config_validate(config_args):
                 "properties": {
                     "dbname": {"type": "string"},
                     "host": {"type": "string",
-                             "pattern": "^(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])(\.(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])){3}$|localhost$"},
+                             "pattern": "^(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])(\.(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])){3}$|^localhost$"},
                     "port": {"type": "integer"},
                     "user": {"type": "string"},
                     "password": {"type": "string"}
@@ -102,14 +117,16 @@ def config_validate(config_args):
             }
         }
     }
+    # Парсим конфигурационный файл
     with open(config_args.config_file) as inf:  # Открывем конфигурационный файл.
-        config = json.load(inf)  # Считываем файл и преобразовываем из формата json в словари и списки формата python
-        jsonschema.validate(config, schema_json)  # Производим валидацию полученного файла json
+        config_json = json.load(
+            inf)  # Считываем файл и преобразовываем из формата json в словари и списки формата python
+        jsonschema.validate(config_json, schema_json)  # Производим валидацию полученного файла json
         logger.info("Конфигурационный файл получен")
-    return config
+    return config_json
 
 
-def get_from_postgresql():
+def get_sl():
     # Подключаемся к PostgreSQL и делаем запросы
     with psycopg2.connect(**config["postgresql"]) as conn:  # Подключаемся к PostgreSQL
         logger.info("Подключение к БД PostgreSQL успешно")  # Логируем успешное подключение к PostgreSQL
@@ -141,6 +158,27 @@ def get_from_postgresql():
             # del queued_calls_without_irrelevant_missed_calls
             logger.info("Запросы к PostgreSQL выполнены")  # Логируем успешное выполнение запросов
     return sl_projects
+
+
+def get_qualification():
+    with psycopg2.connect(
+            host="172.16.200.211",
+            dbname="naumenreportsdb",
+            port="5432",
+            user="naucrm",
+            password="naucrm"
+    ) as conn:
+        conn.set_client_encoding('UTF8')  # Деодируем получаемые данные в UNICODE
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT projectuuid, personuuid, qualification
+                FROM mv_participant_history
+                WHERE roletype='participaints' and qualification notnull and roletype='participaints'
+                GROUP BY projectuuid, qualification, personuuid
+            """
+            cursor.execute(sql)
+            for row in cursor.fetchall():
+                print(row)
 
 
 def get_from_redis():
@@ -192,7 +230,8 @@ def main():
     :return: Ничего не возвращает
     """
     try:
-        sl_projects = get_from_postgresql()
+        sl_projects = get_sl()
+        get_qualification()
         ewt = get_from_redis()
         metrics_json = convert_to_json(sl_projects, ewt)
         send_report(metrics_json)
@@ -234,39 +273,47 @@ if __name__ == "__main__":  # Если программа запущена ка�
 else:
     logger = logging.getLogger(__name__)  # а если запущен как модуль, то даём название логеру, как у модуля
 
-try:
-    config_args = arg_parse()
-    create_logger(config_args)
-    config = config_validate(config_args)
-except IOError:
-    logger.critical("Ошибка при открытии/создании файлов")  # Выводим на экран ошибку
-    logger.exception("")  # Логируем ошибку как уровень ERROR
-    logging.shutdown()  # Закрываем логирование
-    sys.exit(1)  # Прерываем программу с ошибкой 1
-except jsonschema.exceptions.ValidationError:
-    logger.critical("Файл конфигурации не прошёл валидацию")
-    logger.exception("Ошибка валидации")
-    logging.shutdown()
-    sys.exit(4)
-except Exception:  # Ловим и выводим другие ошибки
-    logger.critical("Неизвестная ошибка при настройке программы.")  # Выводим на экран ошибку
-    logger.exception('')  # Логируем ошибку как уровень ERROR
-    logging.shutdown()  # Закрываем логирование
-    sys.exit(5)  # Прерываем программу с ошибкой 2
-logger.debug("Конфигурационный файл получен: {}".format(config))  # Логируем данные из конфигурационного файла
+killer = GracefulKiller()
 
-"""
-if config["daemon"]:  # Если в конфигурационном файле в daemon дано значение true, то
-    with daemon.DaemonContext():  # запускаем демона
-        while True:  # Бесконечный цикл повторения
-            main(config)  # Выполняем основную часть программы
-            logging.debug("Сон {}".format(config["timer"]))  # Логируем на сколько производится прерывание
-            time.sleep(config["timer"])  # Ждём указанное в конфигурационном файле время
-else:"""  # Если false, то
+while True:
+    try:
+        config_args = arg_parse()
+        create_logger()
+        config = config_validate()
+    except argparse.ArgumentError:
+        sys.exit(110)
+    except argparse.ArgumentTypeError:
+        sys.exit(111)
+    except IOError:
+        logger.critical("Ошибка при открытии/создании файлов")  # Выводим на экран ошибку
+        logger.exception("")  # Логируем ошибку как уровень ERROR
+        logging.shutdown()  # Закрываем логирование
+        sys.exit(1)  # Прерываем программу с ошибкой 1
+    except jsonschema.exceptions.ValidationError:
+        logger.critical("Файл конфигурации не прошёл валидацию")
+        logger.exception("Ошибка валидации")
+        logging.shutdown()
+        sys.exit(4)
+    except Exception:  # Ловим и выводим другие ошибки
+        logger.critical("Неизвестная ошибка при настройке программы.")  # Выводим на экран ошибку
+        logger.exception('')  # Логируем ошибку как уровень ERROR
+        logging.shutdown()  # Закрываем логирование
+        sys.exit(5)  # Прерываем программу с ошибкой 2
+    logger.debug("Конфигурационный файл получен: {}".format(config))  # Логируем данные из конфигурационного файла
 
-
-main()  # Выполняем программу один раз
-logging.shutdown()  # Закрываем логирование
-sys.exit(0)
+    while config["daemon"]:  # Бесконечный цикл повторения
+        main()  # Выполняем основную часть программы
+        logging.debug("Сон {}".format(config["timer"]))  # Логируем на сколько производится прерывание
+        time.sleep(config["timer"])  # Ждём указанное в конфигурационном файле время
+        if killer.kill_now:
+            logger.info("Программа закрывается по сигналу SIGTERM")
+            sys.exit(0)
+        #elif killer.restart_now:
+            #killer.restart_now = False
+            #logger.info("Программа перезапущена.")
+            #break
+    else:  # Если false, то
+        main()  # Выполняем программу один раз
+        break
 
 # Альфа версия (Не смотреть)--------------------------------------------------------------------------------------------

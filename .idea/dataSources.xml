@@ -7,5 +7,11 @@
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
       <jdbc-url>jdbc:postgresql://172.16.200.211:5432/naumendb</jdbc-url>
     </data-source>
+    <data-source source="LOCAL" name="naumenreportsdb@172.16.200.211" uuid="7cbc61d2-2ccd-441c-a49b-6245830b3bec">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://172.16.200.211:5432/naumenreportsdb</jdbc-url>
+    </data-source>
   </component>
 </project>
