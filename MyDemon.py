@@ -2,23 +2,23 @@
 Программа собирает метрики из Redis и PostgreSQL, и выкладываем в Consul в формате json
 """
 __author__ = "_FEAR_MOV_"
-__version__ = 0.7
-# Импортируемые библиотеки----------------------------------------------------------------------------------------------
-import psycopg2  # Для работы с PostgreSQL
-import redis  # Для работы с Redis
-import sys  # Для работы с переменными орукжения интерпритатора python
-import json  # Для работы с форматом json
-import consul  # Для работы с консул
-import platform  # Для нахождения названия машины
-import logging  # Для логирования
-import argparse  # Для получения аргументов из консоли, переданных при запуске
-import datetime  # Для того чтобы узнать текущее время
-import jsonschema  # Для валидации файла json
+__version__ = 0.8
+
+import psycopg2
+import redis
+import sys
+import json
+import consul
+import platform
+import logging
+import argparse
+import datetime
+import jsonschema
 import time
 import signal
 
 
-class GracefulKiller:
+class Signals:
     kill_now = False
     restart_now = False
 
@@ -35,15 +35,14 @@ class GracefulKiller:
 
 
 def arg_parse():
-    # Парсим аргументы из консоли, переданные при запуске скрипта
-    parser = argparse.ArgumentParser()  # Создаём объект класса argparse
-    parser.add_argument(  # Добавляем аргумент
-        "-cf",  # -cf получаемый из консоли
-        "--config_file",  # в программе будет переменная config_file
-        nargs="?",  # аргумента может не быть, или есть но не передано значение
-        const="config.json",  # если аргумент есть, но нет значения, то передаётся config.json
-        default="config.json",  # если аргумента нет, то передаём как настройку по умолчанию config.json
-        help="Опция для подключения конфигурационного файла, лежащего вне папки со скриптом"  # выводится при -h
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-cf",
+        "--config_file",
+        nargs="?",
+        const="config.json",
+        default="config.json",
+        help="Опция для подключения конфигурационного файла, вне папки со скриптом"
     )
     parser.add_argument(
         "-lf",
@@ -67,16 +66,16 @@ def arg_parse():
 def create_logger():
     # Настройка логирования
     # Выводим критические ошибки на консоль
-    handler_stdout = logging.StreamHandler()  # Выводим данные на консоль
-    handler_stdout.setLevel(logging.CRITICAL)  # Задаём уровень выводимых ошибок критический, закрывающие программу
+    handler_stdout = logging.StreamHandler()
+    handler_stdout.setLevel(logging.CRITICAL)
     handler_stdout.setFormatter(logging.Formatter('%(levelname)s - %(name)s - %(asctime)s: %(message)s'))
-    logger.addHandler(handler_stdout)  # Добавляем объект handler к logger
+    logger.addHandler(handler_stdout)
     # Настройка логирования в файл
     logging.basicConfig(
-        filename=config_args.log_file,  # Название файла лога
-        level=int(config_args.log_level),  # Уровень логирования
-        format='%(levelname)s - %(name)s - %(asctime)s: %(message)s',  # Задаём формат записи
-        datefmt="%Y-%m-%d %H:%M:%S"  # Задаём формат даты и времени
+        filename=config_args.log_file,
+        level=int(config_args.log_level),
+        format='%(levelname)s - %(name)s - %(asctime)s: %(message)s',
+        datefmt="%Y-%m-%d %H:%M:%S"
     )
 
 
@@ -97,7 +96,7 @@ def config_validate():
                 }
             },
             "postgresql": {
-                "type": "object",
+                "type": "array",
                 "properties": {
                     "dbname": {"type": "string"},
                     "host": {"type": "string",
@@ -118,21 +117,18 @@ def config_validate():
         }
     }
     # Парсим конфигурационный файл
-    with open(config_args.config_file) as inf:  # Открывем конфигурационный файл.
-        config_json = json.load(
-            inf)  # Считываем файл и преобразовываем из формата json в словари и списки формата python
-        jsonschema.validate(config_json, schema_json)  # Производим валидацию полученного файла json
-        logger.info("Конфигурационный файл получен")
+    with open(config_args.config_file) as inf:
+        config_json = json.load(inf)
+        jsonschema.validate(config_json, schema_json)
+        logger.info("Configuration file received.")
     return config_json
 
 
 def get_sl():
-    # Подключаемся к PostgreSQL и делаем запросы
-    with psycopg2.connect(**config["postgresql"]) as conn:  # Подключаемся к PostgreSQL
-        logger.info("Подключение к БД PostgreSQL успешно")  # Логируем успешное подключение к PostgreSQL
-        conn.set_client_encoding('UTF8')  # Деодируем получаемые данные в UNICODE
-        with conn.cursor() as cursor:  # Открываем курсор для обращений к БД
-            # Расчёт уровня сервиса SL
+    with psycopg2.connect(**config["postgresql-naumendb"]) as conn:
+        logger.info("Connection to PostgreSQL DB successfully.")
+        conn.set_client_encoding('UTF8')
+        with conn.cursor() as cursor:
             cursor.execute(
                 """with timed_answering_calls as (
                     select project_id as id_project, count(session_id)::float as tac
@@ -152,75 +148,92 @@ def get_sl():
                 group by project_id, tac, qcwimc"""
             )
             sl_projects = {key: float(value) for key, value in cursor}
-            logger.debug("Project_id: sl - {}".format(sl_projects))  # Логируем полученный словарь
-            # Удаляем не нужные словари
-            # del timed_answering_calls
-            # del queued_calls_without_irrelevant_missed_calls
-            logger.info("Запросы к PostgreSQL выполнены")  # Логируем успешное выполнение запросов
+            logger.debug("Project_id: sl - {}".format(sl_projects))
     return sl_projects
 
 
 def get_qualification():
-    with psycopg2.connect(
-            host="172.16.200.211",
-            dbname="naumenreportsdb",
-            port="5432",
-            user="naucrm",
-            password="naucrm"
-    ) as conn:
-        conn.set_client_encoding('UTF8')  # Деодируем получаемые данные в UNICODE
+    qualification = {}
+    logins = set()
+    with psycopg2.connect(**config["postgresql-naumenreportsdb"]) as conn:
+        conn.set_client_encoding('UTF8')
         with conn.cursor() as cursor:
             sql = """
-                SELECT projectuuid, personuuid, qualification
-                FROM mv_participant_history
-                WHERE roletype='participaints' and qualification notnull and roletype='participaints'
-                GROUP BY projectuuid, qualification, personuuid
+                WITH qualification AS (
+                    SELECT projectuuid, personuuid, qualification
+                    FROM mv_participant_history
+                    WHERE roletype='participaints' and qualification notnull and roletype='participaints'
+                    GROUP BY projectuuid, qualification, personuuid
+                )
+                SELECT projectuuid, personuuid, login, qualification
+                FROM mv_employee, qualification
+                WHERE removed=false and personuuid=uuid
+                GROUP BY projectuuid, qualification, personuuid, login
             """
             cursor.execute(sql)
-            for row in cursor.fetchall():
+            for row in cursor:
                 print(row)
+                qualification[row[0]] = [row[1], row[2], row[3]]
+                logins.add(row[2])
+    print(qualification)
+    print(logins)
+    with psycopg2.connect(**config["postgresql-naumendb"]) as conn:
+        with conn.cursor() as cursor:
+            for login in logins:
+                print(login)
+                sql = """
+                    SELECT login, status, sub_status, sum(duration)
+                    FROM ns_agent_sub_status_duration
+                    WHERE login='{0}' and sub_status='normal'
+                    GROUP BY login, status, sub_status
+                """.format(login)
+                cursor.execute(sql)
+                for row in cursor.fetchall():
+                    print(row)
+    logger.info("PostgreSQL data retrieved.")
 
 
 def get_from_redis():
     # Подключаемся к Redis и делаем запросы
-    conn_redis = redis.StrictRedis(**config["redis"])  # Подключаемся к БД Redis
-    logger.info("Подключение к БД Redis успешно")  # Логируем успешное подключение к БД Redis
+    conn_redis = redis.StrictRedis(**config["redis"])
+    logger.info("Connecting to the Redis database successfully.")
 
     # Расчетное время ожидания (EWT) по каждой очереди
-    project_ids = conn_redis.smembers("project_config:projects_set")  # Запрашиваем id проктов
-    ewt = {}  # Создаём словарь для хранения информации полученной из Redis
-    logger.debug("ID проектов из redis: {}".format(project_ids))  # Логируем полученыне id проектов
-    for project_id in project_ids:  # Перебираем все полученные id проектов по одному
+    project_ids = conn_redis.smembers("project_config:projects_set")
+    ewt = {}
+    logger.debug("ID projects from redis: {}".format(project_ids))
+    for project_id in project_ids:
         project_id = project_id.decode()
-        s = conn_redis.get("project_config:%s:mean_wait" % project_id)  # Делаем запрос к Redis, для получения ewt
-        s = s.decode()  # Преобразуем полученные даныне в строку
-        ewt[project_id] = s  # Записваем в словарь типа "project_id": "ewt"
-    logger.debug("EWT: {}".format(ewt))  # Логируем полученынй словарь
+        s = conn_redis.get("project_config:%s:mean_wait" % project_id)
+        s = s.decode()
+        ewt[project_id] = s
+    logger.debug("EWT: {}".format(ewt))
+    logger.info("Redis data retrieved")
     return ewt
 
 
 def convert_to_json(sl_projects, ewt):
     # Переменная для формирования JSON файла
     data_json = dict()
-    data_json["time"] = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")  # Время записи данных
+    data_json["time"] = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     # Заполняем переменную
     # Высчитываем SL инсталяции и записываем
     data_json["sl_instalation"] = sum(sl_projects.values()) / len(sl_projects.values())
-    data_json["projects"] = []  # Будем создавать список проектов
-    for key, value in sl_projects.items():  # Перебираем словарь с помощью items() получаем отдельно ключ и значение
-        data_json["projects"].append({key: [{"sl": value, "ewt": ewt[key]}]})  # Создаём словарь
-    logger.debug("Файл json: {}".format(data_json))  # Логируем созданынй словарь
+    data_json["projects"] = []
+    for key, value in sl_projects.items():
+        data_json["projects"].append({key: [{"sl": value, "ewt": ewt[key]}]})
+    logger.debug("File json: {}".format(data_json))
 
     # Создаём json
-    metrics_json = json.dumps(data_json, indent=4)  # Преобразовываем словарь в json
+    metrics_json = json.dumps(data_json, indent=4)
     return metrics_json
 
 
 def send_report(metrics_json):
     # Закидывем json в consul
-    c = consul.Consul(**config["consul"])  # Подключаемся к Consul
-    key = "Balancer/" + platform.node()  # Создаём переменную ключа для передачи в Consul
-    c.kv.put(key, metrics_json)  # Передаём сгенерированный json фалй по заданному ключу в Consul
+    c = consul.Consul(**config["consul"])
+    key = "Balancer/" + platform.node()
+    c.kv.put(key, metrics_json)
 
 
 def main():
@@ -236,44 +249,43 @@ def main():
         metrics_json = convert_to_json(sl_projects, ewt)
         send_report(metrics_json)
     except psycopg2.Error:
-        logger.critical("Не получен доступ к PostgreSQL.")  # Выводим на экран ошибку
-        logger.exception('')  # Логируем ошибку как уровень ERROR
-        logging.shutdown()  # Закрываем логирование
-        sys.exit(6)  # Прерываем программу с ошибкой 2
+        logger.critical("Not accessed PostgreSQL.")
+        logger.exception('')
+        logging.shutdown()
+        sys.exit(6)
     except redis.RedisError:
-        logger.critical("Не получен доступ к Redis.")  # Выводим на экран ошибку
-        logger.exception('')  # Логируем ошибку как уровень ERROR
-        logging.shutdown()  # Закрываем логирование
-        sys.exit(7)  # Прерываем программу с ошибкой 2
+        logger.critical("Not accessed Redis.")
+        logger.exception('')
+        logging.shutdown()
+        sys.exit(7)
     except ZeroDivisionError:
-        logger.critical("При получение SL из PostgreSQL не были получнены данные")  # Выводим на экран ошибку
-        logger.exception('')  # Логируем ошибку как уровень ERROR
-        logging.shutdown()  # Закрываем логирование
-        sys.exit(8)  # Прерываем программу с ошибкой 2
+        logger.critical("No data was received when retrieving SL from PostgreSQL.")
+        logger.exception('')
+        logging.shutdown()
+        sys.exit(8)
     except json.JSONDecodeError:
-        logger.critical("Ошибка при преобразовании данных в json формат.")  # Выводим на экран ошибку
-        logger.exception('')  # Логируем ошибку как уровень ERROR
-        logging.shutdown()  # Закрываем логирование
-        sys.exit(9)  # Прерываем программу с ошибкой 2
+        logger.critical("Error when converting data to json format.")
+        logger.exception('')
+        logging.shutdown()
+        sys.exit(9)
     except consul.ConsulException:
-        logger.critical("Ошибка при работе с Consul.")  # Выводим на экран ошибку
-        logger.exception('')  # Логируем ошибку как уровень ERROR
-        logging.shutdown()  # Закрываем логирование
-        sys.exit(10)  # Прерываем программу с ошибкой 2
+        logger.critical("Error when working with Consul.")
+        logger.exception('')
+        logging.shutdown()
+        sys.exit(10)
     except Exception:
-        logger.critical("Неизвестная ошибка")  # Выводим на экран ошибку
-        logger.exception('')  # Логируем ошибку как уровень ERROR
-        logging.shutdown()  # Закрываем логирование
-        sys.exit(11)  # Прерываем программу с ошибкой 2
+        logger.critical("Unknown error.")
+        logger.exception('')
+        logging.shutdown()
+        sys.exit(11)
 
 
-# Тело программы--------------------------------------------------------------------------------------------------------
-if __name__ == "__main__":  # Если программа запущена как скрипт, то
-    logger = logging.getLogger("root")  # присваивем имя логеру root
+if __name__ == "__main__":
+    logger = logging.getLogger("root")
 else:
-    logger = logging.getLogger(__name__)  # а если запущен как модуль, то даём название логеру, как у модуля
+    logger = logging.getLogger(__name__)
 
-killer = GracefulKiller()
+sig = Signals()
 
 while True:
     try:
@@ -285,35 +297,33 @@ while True:
     except argparse.ArgumentTypeError:
         sys.exit(111)
     except IOError:
-        logger.critical("Ошибка при открытии/создании файлов")  # Выводим на экран ошибку
-        logger.exception("")  # Логируем ошибку как уровень ERROR
-        logging.shutdown()  # Закрываем логирование
-        sys.exit(1)  # Прерываем программу с ошибкой 1
+        logger.critical("Error opening/creating files.")
+        logger.exception("")
+        logging.shutdown()
+        sys.exit(1)
     except jsonschema.exceptions.ValidationError:
-        logger.critical("Файл конфигурации не прошёл валидацию")
-        logger.exception("Ошибка валидации")
+        logger.critical("Configuration file failed validation.")
+        logger.exception("")
         logging.shutdown()
         sys.exit(4)
-    except Exception:  # Ловим и выводим другие ошибки
-        logger.critical("Неизвестная ошибка при настройке программы.")  # Выводим на экран ошибку
-        logger.exception('')  # Логируем ошибку как уровень ERROR
-        logging.shutdown()  # Закрываем логирование
-        sys.exit(5)  # Прерываем программу с ошибкой 2
-    logger.debug("Конфигурационный файл получен: {}".format(config))  # Логируем данные из конфигурационного файла
+    except Exception:
+        logger.critical("Unknown error.")
+        logger.exception('')
+        logging.shutdown()
+        sys.exit(5)
+    logger.debug("Configuration file received: {}".format(config))
 
-    while config["daemon"]:  # Бесконечный цикл повторения
-        main()  # Выполняем основную часть программы
-        logging.debug("Сон {}".format(config["timer"]))  # Логируем на сколько производится прерывание
-        time.sleep(config["timer"])  # Ждём указанное в конфигурационном файле время
-        if killer.kill_now:
-            logger.info("Программа закрывается по сигналу SIGTERM")
+    while config["daemon"]:
+        main()
+        logging.debug("Сон {}".format(config["timer"]))
+        time.sleep(config["timer"])
+        if sig.kill_now:
+            logger.info("The program is closed by a signal SIGTERM")
             sys.exit(0)
-        #elif killer.restart_now:
+        #elif sig.restart_now:
             #killer.restart_now = False
-            #logger.info("Программа перезапущена.")
+            #logger.info("Program restarted by SIGHUP signal.")
             #break
-    else:  # Если false, то
-        main()  # Выполняем программу один раз
+    else:
+        main()
         break
-
-# Альфа версия (Не смотреть)--------------------------------------------------------------------------------------------
