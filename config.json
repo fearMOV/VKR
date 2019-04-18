@@ -1,5 +1,5 @@
 {
-  "daemon": false,
+  "daemon": true,
   "timer": 30,
   "redis": {
     "host": "172.16.200.211",
@@ -21,8 +21,8 @@
     "password": "naucrm"
   },
   "consul": {
-    "host": "demo.consul.io",
-    "port": 80,
+    "host": "172.16.200.211",
+    "port": 8500,
     "dc": "dc1"
   }
 }

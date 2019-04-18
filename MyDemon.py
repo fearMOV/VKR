@@ -19,15 +19,26 @@ import signal
 
 
 class Signals:
+    """
+    Определяем действия на системные сигналы.
+
+    Программа реагирует на три сигнала:
+    SIGINT - завершает программу по завершении цикла.
+    SIGTERM - завершает программу по завершению цикла.
+    SIGHUP - переопределяет конфигурационные данные и аргументы программы.
+    """
     kill_now = False
     restart_now = False
 
     def __init__(self):
+        """
+        Инициализируем сигналы.
+        """
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
         #signal.signal(signal.SIGHUP, self.restart_gracefully)
 
-    def exit_gracefully(self, signum, frame):
+    def exit_gracefully(self):
         self.kill_now = True
 
     #def restart_gracefully(self, signum, frame):
@@ -35,6 +46,20 @@ class Signals:
 
 
 def arg_parse():
+    """
+    Парсим аргументы.
+
+    Принимаемые аргументы:
+    -h Информация об аргументах, которые принимает программа.
+
+    -cf Указываем путь к конфигурационному файлу, по умолчанию ищет config.json в текущей папке программы.
+
+    -lf Указываем путь к файлу логов, по умолчанию ищет sample.log в текущей папке программы.
+
+    -ll Указываем уровень логирования, по умолчанию 10 - Debug. Есть ещё 20 - Info, 40 - Error, 50 - Critical.
+
+    :return: возвращаем объект с тремя переменными config_file, log_file, log_level.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-cf",
@@ -64,7 +89,13 @@ def arg_parse():
 
 
 def create_logger():
-    # Настройка логирования
+    """
+    Подключаем логирование.
+
+    Всё выводится в файл и критические ошибки дублируются на консоль.
+
+    :return: функция ничего не возващает.
+    """
     # Выводим критические ошибки на консоль
     handler_stdout = logging.StreamHandler()
     handler_stdout.setLevel(logging.CRITICAL)
@@ -80,7 +111,11 @@ def create_logger():
 
 
 def config_validate():
-    # Схема файла json, которую мы ожидаем
+    """
+    Парсим конфигурационный файл и производим его валидацию.
+
+    :return: возвращает переменную типа словарь с данными о конфигурации.
+    """
     schema_json = {
         "type": "object",
         "properties": {
@@ -95,8 +130,19 @@ def config_validate():
                     "db": {"type": "integer"}
                 }
             },
-            "postgresql": {
-                "type": "array",
+            "postgresql-naumendb": {
+                "type": "object",
+                "properties": {
+                    "dbname": {"type": "string"},
+                    "host": {"type": "string",
+                             "pattern": "^(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])(\.(25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[0-9]{2}|[0-9])){3}$|^localhost$"},
+                    "port": {"type": "integer"},
+                    "user": {"type": "string"},
+                    "password": {"type": "string"}
+                }
+            },
+            "postgresql-naumenreportsdb": {
+                "type": "object",
                 "properties": {
                     "dbname": {"type": "string"},
                     "host": {"type": "string",
@@ -125,6 +171,11 @@ def config_validate():
 
 
 def get_sl():
+    """
+    Подключаемся к PostgreSQL и делаем запрос для получения уровня сервиса (SL) для каждой очереди.
+
+    :return: возвращает полученные из PostgreSQL данные в виде словаря, типа project_id: sl.
+    """
     with psycopg2.connect(**config["postgresql-naumendb"]) as conn:
         logger.info("Connection to PostgreSQL DB successfully.")
         conn.set_client_encoding('UTF8')
@@ -194,6 +245,11 @@ def get_qualification():
 
 
 def get_from_redis():
+    """
+    Подключаемся к Redis и делаем запрос для получения расчетного времени ожидания (EWT) по каждой очереди.
+
+    :return: возвращает полученные из Redis данные в виде словаря, типа project_id: ewt.
+    """
     # Подключаемся к Redis и делаем запросы
     conn_redis = redis.StrictRedis(**config["redis"])
     logger.info("Connecting to the Redis database successfully.")
@@ -230,7 +286,12 @@ def convert_to_json(sl_projects, ewt):
 
 
 def send_report(metrics_json):
-    # Закидывем json в consul
+    """
+    Передаём сформированный json в Consul.
+
+    :param metrics_json: обязательный параметр, сформированная json переменная.
+    :return: функия ничего не возвращает.
+    """
     c = consul.Consul(**config["consul"])
     key = "Balancer/" + platform.node()
     c.kv.put(key, metrics_json)
@@ -327,3 +388,4 @@ while True:
     else:
         main()
         break
+logger.info("Program complete")
