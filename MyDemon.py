@@ -1,6 +1,8 @@
 """
 Программа собирает метрики из Redis и PostgreSQL, и выкладываем в Consul в формате json
 """
+from psycopg2.pool import SimpleConnectionPool
+
 __author__ = "_FEAR_MOV_"
 __version__ = 0.8
 
@@ -176,71 +178,68 @@ def get_sl():
 
     :return: возвращает полученные из PostgreSQL данные в виде словаря, типа project_id: sl.
     """
-    with psycopg2.connect(**config["postgresql-naumendb"]) as conn:
-        logger.info("Connection to PostgreSQL DB successfully.")
-        conn.set_client_encoding('UTF8')
-        with conn.cursor() as cursor:
-            cursor.execute(
-                """with timed_answering_calls as (
-                    select project_id as id_project, count(session_id)::float as tac
-                    from ns_inbound_call_data
-                    WHERE is_processed = True and is_processed_after_threshold = false
-                    group by id_project
-                ),
-                queued_calls_without_irrelevant_missed_calls as (
-                    SELECT project_id, count(session_id)::float as qcwimc
-                    FROM ns_inbound_call_data
-                    WHERE is_unblocked = True and is_shortly_abandoned = false
-                    group by project_id
-                )
-                select project_id, tac / qcwimc as sl
-                from timed_answering_calls, queued_calls_without_irrelevant_missed_calls
-                where project_id = id_project
-                group by project_id, tac, qcwimc"""
+    logger.info("Connection to PostgreSQL DB successfully.")
+    conn_db.set_client_encoding('UTF8')
+    with conn_db.cursor() as cursor:
+        cursor.execute(
+            """with timed_answering_calls as (
+                select project_id as id_project, count(session_id)::float as tac
+                from ns_inbound_call_data
+                WHERE is_processed = True and is_processed_after_threshold = false
+                group by id_project
+            ),
+            queued_calls_without_irrelevant_missed_calls as (
+                SELECT project_id, count(session_id)::float as qcwimc
+                FROM ns_inbound_call_data
+                WHERE is_unblocked = True and is_shortly_abandoned = false
+                group by project_id
             )
-            sl_projects = {key: float(value) for key, value in cursor}
-            logger.debug("Project_id: sl - {}".format(sl_projects))
+            select project_id, tac / qcwimc as sl
+            from timed_answering_calls, queued_calls_without_irrelevant_missed_calls
+            where project_id = id_project
+            group by project_id, tac, qcwimc"""
+        )
+        sl_projects = {key: float(value) for key, value in cursor}
+        logger.debug("Project_id: sl - {}".format(sl_projects))
     return sl_projects
 
 
 def get_qualification():
     qualification = {}
     logins = set()
-    with psycopg2.connect(**config["postgresql-naumenreportsdb"]) as conn:
-        conn.set_client_encoding('UTF8')
-        with conn.cursor() as cursor:
-            sql = """
-                WITH qualification AS (
-                    SELECT projectuuid, personuuid, qualification
-                    FROM mv_participant_history
-                    WHERE roletype='participaints' and qualification notnull and roletype='participaints'
-                    GROUP BY projectuuid, qualification, personuuid
-                )
-                SELECT projectuuid, personuuid, login, qualification
-                FROM mv_employee, qualification
-                WHERE removed=false and personuuid=uuid
-                GROUP BY projectuuid, qualification, personuuid, login
-            """
-            cursor.execute(sql)
-            for row in cursor:
-                print(row)
-                qualification[row[0]] = [row[1], row[2], row[3]]
-                logins.add(row[2])
+    conn_reports_db.set_client_encoding('UTF8')
+    with conn_reports_db.cursor() as cursor:
+        sql = """
+            WITH qualification AS (
+                SELECT projectuuid, personuuid, qualification
+                FROM mv_participant_history
+                WHERE roletype='participaints' and qualification notnull and roletype='participaints'
+                GROUP BY projectuuid, qualification, personuuid
+            )
+            SELECT projectuuid, personuuid, login, qualification
+            FROM mv_employee, qualification
+            WHERE removed=false and personuuid=uuid
+            GROUP BY projectuuid, qualification, personuuid, login
+        """
+        cursor.execute(sql)
+        for row in cursor:
+            print(row)
+            qualification[row[0]] = [row[1], row[2], row[3]]
+            logins.add(row[2])
     print(qualification)
     print(logins)
-    with psycopg2.connect(**config["postgresql-naumendb"]) as conn:
-        with conn.cursor() as cursor:
-            for login in logins:
-                print(login)
-                sql = """
-                    SELECT login, status, sub_status, sum(duration)
-                    FROM ns_agent_sub_status_duration
-                    WHERE login='{0}' and sub_status='normal'
-                    GROUP BY login, status, sub_status
-                """.format(login)
-                cursor.execute(sql)
-                for row in cursor.fetchall():
-                    print(row)
+    with conn_db.cursor() as cursor:
+        for login in logins:
+            print(login)
+            sql = """
+                SELECT login, status, sub_status, sum(duration)
+                FROM ns_agent_sub_status_duration
+                WHERE login='{0}' and sub_status='normal'
+                GROUP BY login, status, sub_status
+            """.format(login)
+            cursor.execute(sql)
+            for row in cursor.fetchall():
+                print(row)
     logger.info("PostgreSQL data retrieved.")
 
 
@@ -313,6 +312,8 @@ def main():
         logger.critical("Not accessed PostgreSQL.")
         logger.exception('')
         logging.shutdown()
+        postgresql_naumendb_pool.closeall()
+        postgresql_naumenreportsdb_pool.closeall()
         sys.exit(6)
     except redis.RedisError:
         logger.critical("Not accessed Redis.")
@@ -353,6 +354,14 @@ while True:
         config_args = arg_parse()
         create_logger()
         config = config_validate()
+        postgresql_naumendb_pool = psycopg2.pool.SimpleConnectionPool(
+            0, 2, **config["postgresql-naumendb"]
+        )
+        conn_db = postgresql_naumendb_pool.getconn()
+        postgresql_naumenreportsdb_pool = psycopg2.pool.SimpleConnectionPool(
+            0, 1, **config["postgresql-naumenreportsdb"]
+        )
+        conn_reports_db = postgresql_naumenreportsdb_pool.getconn()
     except argparse.ArgumentError:
         sys.exit(110)
     except argparse.ArgumentTypeError:
