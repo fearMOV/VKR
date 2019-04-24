@@ -319,7 +319,7 @@ while True:
         create_logger()
         config = config_validate()
         postgresql_naumendb_pool = psycopg2.pool.SimpleConnectionPool(
-            0, 1, **config["postgresql-naumendb"]
+            0, 1, **config["postgresql-naumen-db"]
         )
         conn_db = postgresql_naumendb_pool.getconn()
     except argparse.ArgumentError:
@@ -336,6 +336,11 @@ while True:
         logger.exception("")
         logging.shutdown()
         sys.exit(4)
+    except psycopg2.pool.PoolError:
+        logger.critical("DB connection error")
+        logger.exception("")
+        logging.shutdown()
+        sys.exit(20)
     except Exception:
         logger.critical("Unknown error.")
         logger.exception('')
