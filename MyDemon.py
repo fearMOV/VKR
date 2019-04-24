@@ -4,7 +4,7 @@
 from psycopg2.pool import SimpleConnectionPool
 
 __author__ = "_FEAR_MOV_"
-__version__ = 0.8
+__version__ = 1.0
 
 import psycopg2
 import redis
@@ -38,13 +38,13 @@ class Signals:
         """
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
-        #signal.signal(signal.SIGHUP, self.restart_gracefully)
+        signal.signal(signal.SIGHUP, self.restart_gracefully)
 
-    def exit_gracefully(self):
+    def exit_gracefully(self, signum, frame):
         self.kill_now = True
 
-    #def restart_gracefully(self, signum, frame):
-        #self.restart_now = True
+    def restart_gracefully(self, signum, frame):
+        self.restart_now = True
 
 
 def arg_parse():
@@ -204,45 +204,6 @@ def get_sl():
     return sl_projects
 
 
-def get_qualification():
-    qualification = {}
-    logins = set()
-    conn_reports_db.set_client_encoding('UTF8')
-    with conn_reports_db.cursor() as cursor:
-        sql = """
-            WITH qualification AS (
-                SELECT projectuuid, personuuid, qualification
-                FROM mv_participant_history
-                WHERE roletype='participaints' and qualification notnull and roletype='participaints'
-                GROUP BY projectuuid, qualification, personuuid
-            )
-            SELECT projectuuid, personuuid, login, qualification
-            FROM mv_employee, qualification
-            WHERE removed=false and personuuid=uuid
-            GROUP BY projectuuid, qualification, personuuid, login
-        """
-        cursor.execute(sql)
-        for row in cursor:
-            print(row)
-            qualification[row[0]] = [row[1], row[2], row[3]]
-            logins.add(row[2])
-    print(qualification)
-    print(logins)
-    with conn_db.cursor() as cursor:
-        for login in logins:
-            print(login)
-            sql = """
-                SELECT login, status, sub_status, sum(duration)
-                FROM ns_agent_sub_status_duration
-                WHERE login='{0}' and sub_status='normal'
-                GROUP BY login, status, sub_status
-            """.format(login)
-            cursor.execute(sql)
-            for row in cursor.fetchall():
-                print(row)
-    logger.info("PostgreSQL data retrieved.")
-
-
 def get_from_redis():
     """
     Подключаемся к Redis и делаем запрос для получения расчетного времени ожидания (EWT) по каждой очереди.
@@ -304,7 +265,6 @@ def main():
     """
     try:
         sl_projects = get_sl()
-        get_qualification()
         ewt = get_from_redis()
         metrics_json = convert_to_json(sl_projects, ewt)
         send_report(metrics_json)
@@ -313,32 +273,36 @@ def main():
         logger.exception('')
         logging.shutdown()
         postgresql_naumendb_pool.closeall()
-        postgresql_naumenreportsdb_pool.closeall()
         sys.exit(6)
     except redis.RedisError:
         logger.critical("Not accessed Redis.")
         logger.exception('')
         logging.shutdown()
+        postgresql_naumendb_pool.closeall()
         sys.exit(7)
     except ZeroDivisionError:
         logger.critical("No data was received when retrieving SL from PostgreSQL.")
         logger.exception('')
         logging.shutdown()
+        postgresql_naumendb_pool.closeall()
         sys.exit(8)
     except json.JSONDecodeError:
         logger.critical("Error when converting data to json format.")
         logger.exception('')
         logging.shutdown()
+        postgresql_naumendb_pool.closeall()
         sys.exit(9)
     except consul.ConsulException:
         logger.critical("Error when working with Consul.")
         logger.exception('')
         logging.shutdown()
+        postgresql_naumendb_pool.closeall()
         sys.exit(10)
     except Exception:
         logger.critical("Unknown error.")
         logger.exception('')
         logging.shutdown()
+        postgresql_naumendb_pool.closeall()
         sys.exit(11)
 
 
@@ -355,13 +319,9 @@ while True:
         create_logger()
         config = config_validate()
         postgresql_naumendb_pool = psycopg2.pool.SimpleConnectionPool(
-            0, 2, **config["postgresql-naumendb"]
+            0, 1, **config["postgresql-naumendb"]
         )
         conn_db = postgresql_naumendb_pool.getconn()
-        postgresql_naumenreportsdb_pool = psycopg2.pool.SimpleConnectionPool(
-            0, 1, **config["postgresql-naumenreportsdb"]
-        )
-        conn_reports_db = postgresql_naumenreportsdb_pool.getconn()
     except argparse.ArgumentError:
         sys.exit(110)
     except argparse.ArgumentTypeError:
@@ -390,10 +350,10 @@ while True:
         if sig.kill_now:
             logger.info("The program is closed by a signal SIGTERM")
             sys.exit(0)
-        #elif sig.restart_now:
-            #killer.restart_now = False
-            #logger.info("Program restarted by SIGHUP signal.")
-            #break
+        elif sig.restart_now:
+            sig.restart_now = False
+            logger.info("Program restarted by SIGHUP signal.")
+            break
     else:
         main()
         break
