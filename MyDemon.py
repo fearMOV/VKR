@@ -1,12 +1,12 @@
 """
 Программа собирает метрики из Redis и PostgreSQL, и выкладываем в Consul в формате json
 """
-from psycopg2.pool import SimpleConnectionPool
 
 __author__ = "_FEAR_MOV_"
 __version__ = 1.0
 
 import psycopg2
+from psycopg2.pool import SimpleConnectionPool
 import redis
 import sys
 import json
@@ -18,6 +18,8 @@ import datetime
 import jsonschema
 import time
 import signal
+
+start_time = time.time()
 
 
 class Signals:
@@ -38,13 +40,13 @@ class Signals:
         """
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
-        signal.signal(signal.SIGHUP, self.restart_gracefully)
+        # signal.signal(signal.SIGHUP, self.restart_gracefully)
 
     def exit_gracefully(self, signum, frame):
         self.kill_now = True
 
-    def restart_gracefully(self, signum, frame):
-        self.restart_now = True
+    # def restart_gracefully(self, signum, frame):
+    #     self.restart_now = True
 
 
 def arg_parse():
@@ -122,7 +124,8 @@ def config_validate():
         "type": "object",
         "properties": {
             "demon": {"type": "boolean"},
-            "timer": {"type": "integer"},
+            "waiting-time": {"type": "integer"},
+            "period": {"type": "integer"},
             "redis": {
                 "type": "object",
                 "properties": {
@@ -132,7 +135,7 @@ def config_validate():
                     "db": {"type": "integer"}
                 }
             },
-            "postgresql-naumendb": {
+            "postgresql-naumen-db": {
                 "type": "object",
                 "properties": {
                     "dbname": {"type": "string"},
@@ -143,7 +146,7 @@ def config_validate():
                     "password": {"type": "string"}
                 }
             },
-            "postgresql-naumenreportsdb": {
+            "postgresql-naumen-reports-db": {
                 "type": "object",
                 "properties": {
                     "dbname": {"type": "string"},
@@ -182,50 +185,115 @@ def get_sl():
     conn_db.set_client_encoding('UTF8')
     with conn_db.cursor() as cursor:
         cursor.execute(
-            """with timed_answering_calls as (
-                select project_id as id_project, count(session_id)::float as tac
-                from ns_inbound_call_data
-                WHERE is_processed = True and is_processed_after_threshold = false
-                group by id_project
-            ),
-            queued_calls_without_irrelevant_missed_calls as (
-                SELECT project_id, count(session_id)::float as qcwimc
+            """WITH timed_answering_calls AS (
+                SELECT project_id AS id_project, count(session_id)::float AS tac
                 FROM ns_inbound_call_data
-                WHERE is_unblocked = True and is_shortly_abandoned = false
-                group by project_id
+                WHERE is_processed = True and is_processed_after_threshold = false
+                GROUP BY id_project
+            ),
+            queued_calls_without_irrelevant_missed_calls AS (
+                SELECT project_id, count(session_id)::float AS qcwimc
+                FROM ns_inbound_call_data
+                WHERE is_unblocked = True AND is_shortly_abandoned = false
+                GROUP BY project_id
             )
-            select project_id, tac / qcwimc as sl
-            from timed_answering_calls, queued_calls_without_irrelevant_missed_calls
-            where project_id = id_project
-            group by project_id, tac, qcwimc"""
+            SELECT project_id, tac / qcwimc AS sl
+            FROM timed_answering_calls, queued_calls_without_irrelevant_missed_calls
+            WHERE project_id = id_project
+            GROUP BY project_id, tac, qcwimc"""
         )
         sl_projects = {key: float(value) for key, value in cursor}
         logger.debug("Project_id: sl - {}".format(sl_projects))
     return sl_projects
 
 
-def get_from_redis():
+def get_ewt(project_ids):
     """
     Подключаемся к Redis и делаем запрос для получения расчетного времени ожидания (EWT) по каждой очереди.
 
     :return: возвращает полученные из Redis данные в виде словаря, типа project_id: ewt.
     """
+    print(project_ids)
     # Подключаемся к Redis и делаем запросы
     conn_redis = redis.StrictRedis(**config["redis"])
     logger.info("Connecting to the Redis database successfully.")
 
     # Расчетное время ожидания (EWT) по каждой очереди
-    project_ids = conn_redis.smembers("project_config:projects_set")
     ewt = {}
     logger.debug("ID projects from redis: {}".format(project_ids))
     for project_id in project_ids:
-        project_id = project_id.decode()
         s = conn_redis.get("project_config:%s:mean_wait" % project_id)
         s = s.decode()
         ewt[project_id] = s
     logger.debug("EWT: {}".format(ewt))
     logger.info("Redis data retrieved")
     return ewt
+
+
+def get_qualification(project_ids):
+    print(project_ids)
+    qualification = {}
+    logins = set()
+    conn_reports_db.set_client_encoding('UTF8')
+    with conn_reports_db.cursor() as cursor:
+        sql = """
+            WITH qualifications AS (
+                SELECT projectuuid, personuuid, qualification
+                FROM mv_participant_history
+                WHERE roletype='participaints' AND
+                    (qualification NOTNULL AND '0' < qualification AND qualification <= '10')
+                    AND (begindate < '{datetime}') AND ( (enddate ISNULL) OR (enddate >= '{datetime}') )
+                GROUP BY projectuuid, qualification, personuuid
+            )
+            SELECT projectuuid, qualification, login 
+            FROM mv_employee, qualifications
+            WHERE removed=false AND personuuid=uuid
+            GROUP BY projectuuid, qualification, login
+        """.format(datetime=datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"))
+        cursor.execute(sql)
+        for row in cursor:
+            print(row)
+            if row[0] not in qualification:
+                qualification[row[0]] = {
+                    10: [], 9: [], 8: [], 7: [], 6: [], 5: [], 4: [], 3: [], 2: [], 1: []
+                }
+                qualification[row[0]][row[1]] += [row[2]]
+            else:
+                qualification[row[0]][row[1]] += [row[2]]
+            logins.add(row[2])
+    print(qualification)
+    print(logins)
+    occupancy = {}
+    with conn_db.cursor() as cursor:
+        for login in logins:
+            print(login)
+            sql = """
+                WITH waiting_time_and_call_handling AS(
+                    SELECT login AS login_wtach, sum(duration)::float AS wtach
+                    FROM ns_agent_sub_status_duration
+                    WHERE login='{login}' AND sub_status!='redirect' AND collected_ts > '{datetime}'
+                    GROUP BY login_wtach
+                ),
+                call_handling AS (
+                    SELECT login AS login_ch, sum(duration)::float AS ch
+                    FROM ns_agent_sub_status_duration
+                    WHERE login='{login}' AND
+                        (sub_status='ringing' OR sub_status='speaking' OR sub_status='wrapup')
+                        AND collected_ts > '{datetime}'
+                    GROUP BY login_ch
+                )
+                SELECT login_wtach AS login, coalesce(ch, 0) / wtach AS occupancy
+                FROM waiting_time_and_call_handling LEFT JOIN call_handling ON login_wtach = login_ch
+                GROUP BY login, occupancy
+            """.format(
+                login=login,
+                datetime=(datetime.datetime.today() - datetime.timedelta(seconds=int(config["period"]))).strftime("%Y-%m-%d %H:%M:%S")
+            )
+            cursor.execute(sql)
+            occupancy = {key: value for key, value in cursor}
+        print(occupancy)
+    logger.info("PostgreSQL data retrieved.")
+    return qualification
 
 
 def convert_to_json(sl_projects, ewt):
@@ -265,7 +333,8 @@ def main():
     """
     try:
         sl_projects = get_sl()
-        ewt = get_from_redis()
+        ewt = get_ewt(sl_projects.keys())
+        qualification = get_qualification(sl_projects.keys())
         metrics_json = convert_to_json(sl_projects, ewt)
         send_report(metrics_json)
     except psycopg2.Error:
@@ -322,6 +391,10 @@ while True:
             0, 1, **config["postgresql-naumen-db"]
         )
         conn_db = postgresql_naumendb_pool.getconn()
+        postgresql_naumenreportsdb_pool = psycopg2.pool.SimpleConnectionPool(
+            0, 1, **config["postgresql-naumen-reports-db"]
+        )
+        conn_reports_db = postgresql_naumenreportsdb_pool.getconn()
     except argparse.ArgumentError:
         sys.exit(110)
     except argparse.ArgumentTypeError:
@@ -350,15 +423,16 @@ while True:
 
     while config["daemon"]:
         main()
-        logging.debug("Сон {}".format(config["timer"]))
-        time.sleep(config["timer"])
+        logging.debug("Waiting {} seconds".format(config["waiting-time"]))
+        print("--- %s seconds ---" % (time.time() - start_time))
+        time.sleep(config["waiting-time"])
         if sig.kill_now:
             logger.info("The program is closed by a signal SIGTERM")
             sys.exit(0)
-        elif sig.restart_now:
-            sig.restart_now = False
-            logger.info("Program restarted by SIGHUP signal.")
-            break
+        # elif sig.restart_now:
+            # sig.restart_now = False
+            # logger.info("Program restarted by SIGHUP signal.")
+            # break
     else:
         main()
         break
