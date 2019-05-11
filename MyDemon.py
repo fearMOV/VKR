@@ -211,9 +211,9 @@ def get_ewt(project_ids):
     """
     Подключаемся к Redis и делаем запрос для получения расчетного времени ожидания (EWT) по каждой очереди.
 
+    :param project_ids: Получаем список id проектов.
     :return: возвращает полученные из Redis данные в виде словаря, типа project_id: ewt.
     """
-    print(project_ids)
     # Подключаемся к Redis и делаем запросы
     conn_redis = redis.StrictRedis(**config["redis"])
     logger.info("Connecting to the Redis database successfully.")
@@ -235,32 +235,34 @@ def get_qualification(project_ids):
     qualification = {}
     logins = set()
     conn_reports_db.set_client_encoding('UTF8')
-    with conn_reports_db.cursor() as cursor:
-        sql = """
-            WITH qualifications AS (
-                SELECT projectuuid, personuuid, qualification
-                FROM mv_participant_history
-                WHERE roletype='participaints' AND
-                    (qualification NOTNULL AND '0' < qualification AND qualification <= '10')
-                    AND (begindate < '{datetime}') AND ( (enddate ISNULL) OR (enddate >= '{datetime}') )
-                GROUP BY projectuuid, qualification, personuuid
-            )
-            SELECT projectuuid, qualification, login 
-            FROM mv_employee, qualifications
-            WHERE removed=false AND personuuid=uuid
-            GROUP BY projectuuid, qualification, login
-        """.format(datetime=datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"))
-        cursor.execute(sql)
-        for row in cursor:
-            print(row)
-            if row[0] not in qualification:
-                qualification[row[0]] = {
-                    10: [], 9: [], 8: [], 7: [], 6: [], 5: [], 4: [], 3: [], 2: [], 1: []
-                }
-                qualification[row[0]][row[1]] += [row[2]]
-            else:
-                qualification[row[0]][row[1]] += [row[2]]
-            logins.add(row[2])
+    with conn_reports_db.cursor() as cursor_reports_db:
+        for project_id in project_ids:
+            sql = """
+                WITH qualifications AS (
+                    SELECT projectuuid, personuuid, qualification
+                    FROM mv_participant_history
+                    WHERE roletype='participaints' AND projectuuid='{project_uuid}' AND
+                        (qualification NOTNULL AND '0' < qualification AND qualification <= '10')
+                        AND (begindate < '{datetime}') AND ( (enddate ISNULL) OR (enddate >= '{datetime}') )
+                    GROUP BY projectuuid, qualification, personuuid
+                )
+                SELECT projectuuid, qualification, login 
+                FROM mv_employee, qualifications
+                WHERE removed=false AND personuuid=uuid
+                GROUP BY projectuuid, qualification, login
+            """.format(datetime=datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"), project_uuid=project_id)
+            cursor_reports_db.execute(sql)
+            for row in cursor_reports_db:
+                print(row)
+                if row[0] not in qualification:
+                    qualification[row[0]] = {
+                        10: [], 9: [], 8: [], 7: [], 6: [], 5: [], 4: [], 3: [], 2: [], 1: []
+                    }
+                    qualification[row[0]][row[1]] += [row[2]]
+                else:
+                    qualification[row[0]][row[1]] += [row[2]]
+                logins.add(row[2])
+
     print(qualification)
     print(logins)
     occupancy = {}
@@ -292,11 +294,22 @@ def get_qualification(project_ids):
             cursor.execute(sql)
             occupancy = {key: value for key, value in cursor}
         print(occupancy)
+        for project_id in project_ids:
+            for i in range(1, 11):
+                summa = 0
+                for login in qualification[project_id][i]:
+                    if occupancy.get(login) is not None:
+                        summa += occupancy[login]
+                if len(qualification[project_id][i]) == 0:
+                    qualification[project_id][i] = 0
+                else:
+                    qualification[project_id][i] = int(len(qualification[project_id][i]) * (1 - (summa / len(qualification[project_id][i]))))
+    print(qualification)
     logger.info("PostgreSQL data retrieved.")
     return qualification
 
 
-def convert_to_json(sl_projects, ewt):
+def convert_to_json(sl_projects, ewt, qualification):
     # Переменная для формирования JSON файла
     data_json = dict()
     data_json["time"] = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
@@ -305,7 +318,7 @@ def convert_to_json(sl_projects, ewt):
     data_json["sl_instalation"] = sum(sl_projects.values()) / len(sl_projects.values())
     data_json["projects"] = []
     for key, value in sl_projects.items():
-        data_json["projects"].append({key: [{"sl": value, "ewt": ewt[key]}]})
+        data_json["projects"].append({key: [{"sl": value, "ewt": ewt[key], "anofo": qualification[key]}]})
     logger.debug("File json: {}".format(data_json))
 
     # Создаём json
@@ -335,7 +348,7 @@ def main():
         sl_projects = get_sl()
         ewt = get_ewt(sl_projects.keys())
         qualification = get_qualification(sl_projects.keys())
-        metrics_json = convert_to_json(sl_projects, ewt)
+        metrics_json = convert_to_json(sl_projects, ewt, qualification)
         send_report(metrics_json)
     except psycopg2.Error:
         logger.critical("Not accessed PostgreSQL.")
