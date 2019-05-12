@@ -4,7 +4,6 @@
     <list default="true" id="353f1735-d5a2-4bfb-9e18-cafe2a6a10f4" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MyDemon.py" beforeDir="false" afterPath="$PROJECT_DIR$/MyDemon.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.json" beforeDir="false" afterPath="$PROJECT_DIR$/config.json" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -47,8 +46,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/MyDemon.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1273">
-              <caret line="422" column="26" lean-forward="true" selection-start-line="422" selection-start-column="26" selection-end-line="422" selection-end-column="26" />
+            <state relative-caret-position="799">
+              <caret line="47" column="8" lean-forward="true" selection-start-line="47" selection-start-column="8" selection-end-line="47" selection-end-column="8" />
               <folding>
                 <element signature="e#143#158#0" expanded="true" />
               </folding>
@@ -400,7 +399,7 @@
       <workItem from="1557396314581" duration="624000" />
       <workItem from="1557405726222" duration="1548000" />
       <workItem from="1557437878084" duration="15954000" />
-      <workItem from="1557489822424" duration="48137000" />
+      <workItem from="1557489822424" duration="48434000" />
     </task>
     <task id="LOCAL-00001" summary="Данные в консул теперь сохраняются в папку Balancer и в качестве ключа записывается hostname машины, в качестве значения записываются полученные из БД метрики">
       <created>1554193963414</created>
@@ -556,11 +555,18 @@
       <option name="project" value="LOCAL" />
       <updated>1557614500619</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="Готовая к работе программа.">
+      <created>1557687084286</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1557687084286</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="405261000" />
+    <option name="totallyTimeSpent" value="405558000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -701,7 +707,8 @@
     <MESSAGE value="Готовая к использованию программа. Исправлен json и подключение к БД. Ловится ошибка при подключении к БД." />
     <MESSAGE value="Теперь используется общая переменная id проектов. Добавляю квалификации." />
     <MESSAGE value="Добавил среднее количество операторов по градации квалификации за единицу времени" />
-    <option name="LAST_COMMIT_MESSAGE" value="Добавил среднее количество операторов по градации квалификации за единицу времени" />
+    <MESSAGE value="Готовая к работе программа." />
+    <option name="LAST_COMMIT_MESSAGE" value="Готовая к работе программа." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/VKR$fsdf.coverage" NAME="fsdf Coverage Results" MODIFIED="1555009287756" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -990,8 +997,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/MyDemon.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1273">
-          <caret line="422" column="26" lean-forward="true" selection-start-line="422" selection-start-column="26" selection-end-line="422" selection-end-column="26" />
+        <state relative-caret-position="799">
+          <caret line="47" column="8" lean-forward="true" selection-start-line="47" selection-start-column="8" selection-end-line="47" selection-end-column="8" />
           <folding>
             <element signature="e#143#158#0" expanded="true" />
           </folding>

@@ -45,7 +45,7 @@ class Signals:
         """
         signal.signal(signal.SIGINT, self.kill_process)
         signal.signal(signal.SIGTERM, self.kill_process)
-        # signal.signal(signal.SIGHUP, self.restart_process)
+        signal.signal(signal.SIGHUP, self.restart_process)
 
     def kill_process(self, signum, frame):
         """
@@ -498,10 +498,10 @@ while True:
             if sig.kill_now:
                 logger.info("The program was closed by a signal SIGTERM.")
                 sys.exit(0)
-            # elif sig.restart_now:
-                # sig.restart_now = False
-                # logger.info("The program was restarted by a signal SIGHUP.")
-                # break
+            elif sig.restart_now:
+                sig.restart_now = False
+                logger.info("The program was restarted by a signal SIGHUP.")
+                break
         else:
             main()
             break
