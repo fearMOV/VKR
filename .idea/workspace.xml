@@ -2,22 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="353f1735-d5a2-4bfb-9e18-cafe2a6a10f4" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/information_schema.FNRwLQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/information_schema.FNRwLQ.meta" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/pg_catalog.0S1ZNQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/pg_catalog.0S1ZNQ.meta" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/pg_temp_1.zkWuFg.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/pg_temp_1.zkWuFg.meta" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/pg_toast.33HYYw.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/pg_toast.33HYYw.meta" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/pg_toast_temp_1.5ixBaA.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/pg_toast_temp_1.5ixBaA.meta" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/public.abK9xQ.meta" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/public.abK9xQ.zip" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/c93b6788-5c75-4ecc-ba06-7f9a2af743a4/storage_v2/_src_/database/naumendb.8lDUew/schema/public.abK9xQ.zip" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MyDemon.py" beforeDir="false" afterPath="$PROJECT_DIR$/MyDemon.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TestSQLAlchemy.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/config.json" beforeDir="false" afterPath="$PROJECT_DIR$/config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/new_config.json" beforeDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -60,10 +47,10 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/MyDemon.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="227">
-              <caret line="239" column="36" lean-forward="true" selection-start-line="239" selection-start-column="36" selection-end-line="239" selection-end-column="36" />
+            <state relative-caret-position="-1273">
+              <caret line="422" column="26" lean-forward="true" selection-start-line="422" selection-start-column="26" selection-end-line="422" selection-end-column="26" />
               <folding>
-                <element signature="e#142#157#0" expanded="true" />
+                <element signature="e#143#158#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -72,17 +59,15 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/MyDemon.log">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1339">
-              <caret line="522" column="43" lean-forward="true" selection-start-line="522" selection-start-column="43" selection-end-line="522" selection-end-column="43" />
-            </state>
+            <state relative-caret-position="-2056" />
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/config.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state>
-              <caret column="1" lean-forward="true" selection-start-column="1" selection-end-column="1" />
+            <state relative-caret-position="272">
+              <caret line="16" column="13" selection-start-line="16" selection-start-column="13" selection-end-line="16" selection-end-column="13" />
             </state>
           </provider>
         </entry>
@@ -136,8 +121,8 @@
         <option value="$PROJECT_DIR$/1231.json" />
         <option value="$PROJECT_DIR$/1234.py" />
         <option value="$PROJECT_DIR$/README.md" />
-        <option value="$PROJECT_DIR$/MyDemon.log" />
         <option value="$PROJECT_DIR$/config.json" />
+        <option value="$PROJECT_DIR$/MyDemon.log" />
         <option value="$PROJECT_DIR$/MyDemon.py" />
       </list>
     </option>
@@ -174,7 +159,7 @@
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
     <property name="nodejs_npm_path_reset_for_default_project" value="true" />
-    <property name="settings.editor.selected.configurable" value="SQL Dialects" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -415,7 +400,7 @@
       <workItem from="1557396314581" duration="624000" />
       <workItem from="1557405726222" duration="1548000" />
       <workItem from="1557437878084" duration="15954000" />
-      <workItem from="1557489822424" duration="23055000" />
+      <workItem from="1557489822424" duration="48137000" />
     </task>
     <task id="LOCAL-00001" summary="Данные в консул теперь сохраняются в папку Balancer и в качестве ключа записывается hostname машины, в качестве значения записываются полученные из БД метрики">
       <created>1554193963414</created>
@@ -557,11 +542,25 @@
       <option name="project" value="LOCAL" />
       <updated>1556094769604</updated>
     </task>
-    <option name="localTasksCounter" value="21" />
+    <task id="LOCAL-00021" summary="Теперь используется общая переменная id проектов. Добавляю квалификации.">
+      <created>1557604354959</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1557604354959</updated>
+    </task>
+    <task id="LOCAL-00022" summary="Добавил среднее количество операторов по градации квалификации за единицу времени">
+      <created>1557614500619</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1557614500619</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="380179000" />
+    <option name="totallyTimeSpent" value="405261000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -700,7 +699,9 @@
     <MESSAGE value="Добавлены пулы подключений к БД." />
     <MESSAGE value="Готовая к использованию программа." />
     <MESSAGE value="Готовая к использованию программа. Исправлен json и подключение к БД. Ловится ошибка при подключении к БД." />
-    <option name="LAST_COMMIT_MESSAGE" value="Готовая к использованию программа. Исправлен json и подключение к БД. Ловится ошибка при подключении к БД." />
+    <MESSAGE value="Теперь используется общая переменная id проектов. Добавляю квалификации." />
+    <MESSAGE value="Добавил среднее количество операторов по градации квалификации за единицу времени" />
+    <option name="LAST_COMMIT_MESSAGE" value="Добавил среднее количество операторов по градации квалификации за единицу времени" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/VKR$fsdf.coverage" NAME="fsdf Coverage Results" MODIFIED="1555009287756" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -709,10 +710,9 @@
     <SUITE FILE_PATH="coverage/VKR$AdapterPostgreSQL.coverage" NAME="AdapterPostgreSQL Coverage Results" MODIFIED="1554104479367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/VKR$TestSQLAlchemy.coverage" NAME="TestSQLAlchemy Coverage Results" MODIFIED="1554295910841" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/VKR$f.coverage" NAME="f Coverage Results" MODIFIED="1555007782596" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/VKR$MyDemon.coverage" NAME="MyDemon Coverage Results" MODIFIED="1557604120547" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/VKR$MyDemon.coverage" NAME="MyDemon Coverage Results" MODIFIED="1557685893461" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/sample1.log" />
     <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/sys.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="136">
@@ -724,9 +724,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-7065" />
       </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/IntegrityError.py">
-      <provider selected="true" editor-type-id="text-editor" />
     </entry>
     <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/InterfaceError.py">
       <provider selected="true" editor-type-id="text-editor" />
@@ -742,49 +739,11 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/venv/Lib/site-packages/redis/exceptions.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="119">
-          <caret line="7" column="6" selection-start-line="7" selection-start-column="6" selection-end-line="7" selection-end-column="6" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/TestSQLAlchemy.py" />
     <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/DataError.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="126">
           <caret line="11" column="6" selection-start-line="11" selection-start-column="6" selection-end-line="11" selection-end-column="6" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/DatabaseError.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="117">
-          <caret line="11" column="34" lean-forward="true" selection-start-line="11" selection-start-column="34" selection-end-line="11" selection-end-column="34" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/OperationalError.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="149">
-          <caret line="11" column="47" selection-start-line="11" selection-start-column="34" selection-end-line="11" selection-end-column="47" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/Error.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="221">
-          <caret line="13" column="21" selection-start-line="13" selection-start-column="12" selection-end-line="13" selection-end-column="21" />
-          <folding>
-            <element signature="e#206#235#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/venv/Lib/site-packages/psycopg2/extensions.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2688">
-          <caret line="204" column="8" lean-forward="true" selection-start-line="204" selection-start-column="8" selection-end-line="204" selection-end-column="8" />
         </state>
       </provider>
     </entry>
@@ -936,13 +895,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/venv/Lib/site-packages/psycopg2/pool.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="765">
-          <caret line="46" column="27" selection-start-line="46" selection-start-column="27" selection-end-line="46" selection-end-column="27" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/client_logs.log" />
     <entry file="file://$PROJECT_DIR$/123456.py" />
     <entry file="file://$PROJECT_DIR$/1234.py" />
@@ -965,26 +917,83 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/venv/Lib/site-packages/psycopg2/extensions.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3349">
+          <caret line="204" lean-forward="true" selection-start-line="204" selection-end-line="204" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/ProgrammingError.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="149">
+          <caret line="11" column="41" lean-forward="true" selection-start-line="11" selection-start-column="41" selection-end-line="11" selection-end-column="41" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/IntegrityError.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="147">
+          <caret line="11" column="6" selection-start-line="11" selection-start-column="6" selection-end-line="11" selection-end-column="6" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/Error.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="117">
+          <caret line="13" column="6" selection-start-line="13" selection-start-column="6" selection-end-line="13" selection-end-column="6" />
+          <folding>
+            <element signature="e#206#235#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/DatabaseError.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="117">
+          <caret line="11" column="32" selection-start-line="11" selection-start-column="32" selection-end-line="11" selection-end-column="32" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharm2019.1/system/python_stubs/-2047695551/psycopg2/_psycopg/OperationalError.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="147">
+          <caret line="11" column="38" selection-start-line="11" selection-start-column="38" selection-end-line="11" selection-end-column="38" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/venv/Lib/site-packages/redis/exceptions.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="51">
+          <caret line="3" column="6" selection-start-line="3" selection-start-column="6" selection-end-line="3" selection-end-column="6" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/venv/Lib/site-packages/psycopg2/pool.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-12">
+          <caret line="169" column="28" lean-forward="true" selection-start-line="169" selection-start-column="28" selection-end-line="169" selection-end-column="28" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/config.json">
       <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret column="1" lean-forward="true" selection-start-column="1" selection-end-column="1" />
+        <state relative-caret-position="272">
+          <caret line="16" column="13" selection-start-line="16" selection-start-column="13" selection-end-line="16" selection-end-column="13" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/MyDemon.log">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1339">
-          <caret line="522" column="43" lean-forward="true" selection-start-line="522" selection-start-column="43" selection-end-line="522" selection-end-column="43" />
-        </state>
+        <state relative-caret-position="-2056" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/MyDemon.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="227">
-          <caret line="239" column="36" lean-forward="true" selection-start-line="239" selection-start-column="36" selection-end-line="239" selection-end-column="36" />
+        <state relative-caret-position="-1273">
+          <caret line="422" column="26" lean-forward="true" selection-start-line="422" selection-start-column="26" selection-end-line="422" selection-end-column="26" />
           <folding>
-            <element signature="e#142#157#0" expanded="true" />
+            <element signature="e#143#158#0" expanded="true" />
           </folding>
         </state>
       </provider>

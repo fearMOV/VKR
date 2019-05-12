@@ -1,12 +1,13 @@
+# -*- coding: utf-8 -*-
 """
-Программа собирает метрики из Redis и PostgreSQL, и выкладываем в Consul в формате json
+Программа собирает метрики из Redis и PostGreSQL, и выкладываем в Consul в формате json
 """
 
 __author__ = "_FEAR_MOV_"
 __version__ = 1.0
 
 import psycopg2
-from psycopg2.pool import SimpleConnectionPool
+import psycopg2.pool
 import redis
 import sys
 import json
@@ -20,6 +21,10 @@ import time
 import signal
 
 start_time = time.time()
+
+
+class EmptyDB(Exception):
+    pass
 
 
 class Signals:
@@ -38,15 +43,33 @@ class Signals:
         """
         Инициализируем сигналы.
         """
-        signal.signal(signal.SIGINT, self.exit_gracefully)
-        signal.signal(signal.SIGTERM, self.exit_gracefully)
-        # signal.signal(signal.SIGHUP, self.restart_gracefully)
+        signal.signal(signal.SIGINT, self.kill_process)
+        signal.signal(signal.SIGTERM, self.kill_process)
+        # signal.signal(signal.SIGHUP, self.restart_process)
 
-    def exit_gracefully(self, signum, frame):
+    def kill_process(self, signum, frame):
+        """
+        Изменяем булевую переменную, которая разрешаюшает закрыть программу.
+
+        Переменные signum и frame принимаются, для избежания критической ошибки.
+
+        :param signum: принимаем, но не используем.
+        :param frame: принимаем, но не используем.
+        :return: ничего не возвращаем.
+        """
         self.kill_now = True
 
-    # def restart_gracefully(self, signum, frame):
-    #     self.restart_now = True
+    def restart_process(self, signum, frame):
+        """
+        Изменяем булевую переменную, которая разрешаюшает переопределить конфигурационные данные программы.
+
+        Переменные signum и frame принимаются, для избежания критической ошибки.
+
+        :param signum: принимаем, но не используем.
+        :param frame: принимаем, но не используем.
+        :return: ничего не возвращаем.
+        """
+        self.restart_now = True
 
 
 def arg_parse():
@@ -171,18 +194,16 @@ def config_validate():
     with open(config_args.config_file) as inf:
         config_json = json.load(inf)
         jsonschema.validate(config_json, schema_json)
-        logger.info("Configuration file received.")
+        logger.info("Configuration file was received.")
     return config_json
 
 
 def get_sl():
     """
-    Подключаемся к PostgreSQL и делаем запрос для получения уровня сервиса (SL) для каждой очереди.
+    Делаем запрос для получения уровня сервиса (SL) для каждой очереди.
 
     :return: возвращает полученные из PostgreSQL данные в виде словаря, типа project_id: sl.
     """
-    logger.info("Connection to PostgreSQL DB successfully.")
-    conn_db.set_client_encoding('UTF8')
     with conn_db.cursor() as cursor:
         cursor.execute(
             """WITH timed_answering_calls AS (
@@ -203,20 +224,21 @@ def get_sl():
             GROUP BY project_id, tac, qcwimc"""
         )
         sl_projects = {key: float(value) for key, value in cursor}
+        if len(sl_projects.values()) == 0:
+            raise EmptyDB
         logger.debug("Project_id: sl - {}".format(sl_projects))
+        logger.info("SL was received.")
     return sl_projects
 
 
 def get_ewt(project_ids):
     """
-    Подключаемся к Redis и делаем запрос для получения расчетного времени ожидания (EWT) по каждой очереди.
+    Делаем запрос для получения расчетного времени ожидания (EWT) по каждой очереди.
 
-    :param project_ids: Получаем список id проектов.
+    :param project_ids: получаем список id проектов.
     :return: возвращает полученные из Redis данные в виде словаря, типа project_id: ewt.
     """
-    # Подключаемся к Redis и делаем запросы
-    conn_redis = redis.StrictRedis(**config["redis"])
-    logger.info("Connecting to the Redis database successfully.")
+    logger.debug("Projects ID: {}".format(project_ids))
 
     # Расчетное время ожидания (EWT) по каждой очереди
     ewt = {}
@@ -226,15 +248,21 @@ def get_ewt(project_ids):
         s = s.decode()
         ewt[project_id] = s
     logger.debug("EWT: {}".format(ewt))
-    logger.info("Redis data retrieved")
+    logger.info("EWT was received.")
     return ewt
 
 
-def get_qualification(project_ids):
-    print(project_ids)
-    qualification = {}
+def get_anofo(project_ids):
+    """
+    Делаем запросы для получения среднего числа свободных операторов по квалицикации на инсталяциии за единицу времени.
+
+    :param project_ids: получаем список id проектов.
+    :return: возвращаем словарь в словаре по типу "id_проекта": qualification: anofo
+    """
+    logger.debug("Projects ID: {}".format(project_ids))
+    anofo = {}
     logins = set()
-    conn_reports_db.set_client_encoding('UTF8')
+    # Запрашивает по ID проектов логины операторов и их квалификации
     with conn_reports_db.cursor() as cursor_reports_db:
         for project_id in project_ids:
             sql = """
@@ -253,22 +281,21 @@ def get_qualification(project_ids):
             """.format(datetime=datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"), project_uuid=project_id)
             cursor_reports_db.execute(sql)
             for row in cursor_reports_db:
-                print(row)
-                if row[0] not in qualification:
-                    qualification[row[0]] = {
+                if row[0] not in anofo:
+                    anofo[row[0]] = {
                         10: [], 9: [], 8: [], 7: [], 6: [], 5: [], 4: [], 3: [], 2: [], 1: []
                     }
-                    qualification[row[0]][row[1]] += [row[2]]
+                    anofo[row[0]][row[1]] += [row[2]]
                 else:
-                    qualification[row[0]][row[1]] += [row[2]]
+                    anofo[row[0]][row[1]] += [row[2]]
                 logins.add(row[2])
 
-    print(qualification)
-    print(logins)
+    logger.debug(anofo)
+    logger.debug(logins)
+    # По логинам узнаём занятость оператора
     occupancy = {}
     with conn_db.cursor() as cursor:
         for login in logins:
-            print(login)
             sql = """
                 WITH waiting_time_and_call_handling AS(
                     SELECT login AS login_wtach, sum(duration)::float AS wtach
@@ -293,36 +320,46 @@ def get_qualification(project_ids):
             )
             cursor.execute(sql)
             occupancy = {key: value for key, value in cursor}
-        print(occupancy)
+        logger.debug(occupancy)
+        # Расчитываем anofo (Среднее число свободных операторов)
         for project_id in project_ids:
             for i in range(1, 11):
                 summa = 0
-                for login in qualification[project_id][i]:
+                for login in anofo[project_id][i]:
                     if occupancy.get(login) is not None:
                         summa += occupancy[login]
-                if len(qualification[project_id][i]) == 0:
-                    qualification[project_id][i] = 0
+                if len(anofo[project_id][i]) == 0:
+                    anofo[project_id][i] = 0
                 else:
-                    qualification[project_id][i] = int(len(qualification[project_id][i]) * (1 - (summa / len(qualification[project_id][i]))))
-    print(qualification)
-    logger.info("PostgreSQL data retrieved.")
-    return qualification
+                    anofo[project_id][i] = int(len(anofo[project_id][i]) * (1 - (summa / len(anofo[project_id][i]))))
+    logger.debug(anofo)
+    logger.info("ANoFO was received.")
+    return anofo
 
 
-def convert_to_json(sl_projects, ewt, qualification):
-    # Переменная для формирования JSON файла
+def convert_to_json(sl_projects, ewt, anofo):
+    """
+    Конвертирует полученные из БД метрики в json формат.
+
+    :param sl_projects: словарь по типу "id_проекта": sl
+    :param ewt: словарь по типу "id_проекта": ewt
+    :param anofo: словарь в словаре по типу "id_проекта": qualification: anofo
+    :return: метрики в формате json
+    """
+    # Переменная для структурирования данных, для дальнейшего конвертирования в JSON формат
     data_json = dict()
     data_json["time"] = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     # Заполняем переменную
     # Высчитываем SL инсталяции и записываем
-    data_json["sl_instalation"] = sum(sl_projects.values()) / len(sl_projects.values())
-    data_json["projects"] = []
+    data_json["sl_installation"] = sum(sl_projects.values()) / len(sl_projects.values())
+    data_json["projects"] = {}
     for key, value in sl_projects.items():
-        data_json["projects"].append({key: [{"sl": value, "ewt": ewt[key], "anofo": qualification[key]}]})
+        data_json["projects"].update({key: {"sl": value, "ewt": ewt[key], "anofo": anofo[key]}})
     logger.debug("File json: {}".format(data_json))
 
-    # Создаём json
+    # Конвертируем полученные данные в json формат
     metrics_json = json.dumps(data_json, indent=4)
+    logger.info("Conversion to json format was successful.")
     return metrics_json
 
 
@@ -340,52 +377,52 @@ def send_report(metrics_json):
 
 def main():
     """
-    Собираем json файл, беря данные из Redis и PostgreSQL, и выкладываем в Consul
+    Собираем json файл, беря данные из Redis и PostGreSQL, и выкладываем в Consul
 
     :return: Ничего не возвращает
     """
     try:
         sl_projects = get_sl()
         ewt = get_ewt(sl_projects.keys())
-        qualification = get_qualification(sl_projects.keys())
-        metrics_json = convert_to_json(sl_projects, ewt, qualification)
+        anofo = get_anofo(sl_projects.keys())
+        metrics_json = convert_to_json(sl_projects, ewt, anofo)
         send_report(metrics_json)
     except psycopg2.Error:
-        logger.critical("Not accessed PostgreSQL.")
+        logger.critical("An error occurred while receiving data from PostGreSQL.")
         logger.exception('')
         logging.shutdown()
         postgresql_naumendb_pool.closeall()
-        sys.exit(6)
+        sys.exit(13)
     except redis.RedisError:
-        logger.critical("Not accessed Redis.")
+        logger.critical("An error occurred while receiving data from Redis.")
         logger.exception('')
         logging.shutdown()
         postgresql_naumendb_pool.closeall()
-        sys.exit(7)
-    except ZeroDivisionError:
-        logger.critical("No data was received when retrieving SL from PostgreSQL.")
+        sys.exit(14)
+    except EmptyDB:
+        logger.critical("No data was received when retrieving SL from PostGreSQL.")
         logger.exception('')
         logging.shutdown()
         postgresql_naumendb_pool.closeall()
-        sys.exit(8)
+        sys.exit(15)
     except json.JSONDecodeError:
         logger.critical("Error when converting data to json format.")
         logger.exception('')
         logging.shutdown()
         postgresql_naumendb_pool.closeall()
-        sys.exit(9)
+        sys.exit(21)
     except consul.ConsulException:
         logger.critical("Error when working with Consul.")
         logger.exception('')
         logging.shutdown()
         postgresql_naumendb_pool.closeall()
-        sys.exit(10)
+        sys.exit(31)
     except Exception:
-        logger.critical("Unknown error.")
+        logger.critical("Unknown error while running main program.")
         logger.exception('')
         logging.shutdown()
         postgresql_naumendb_pool.closeall()
-        sys.exit(11)
+        sys.exit(43)
 
 
 if __name__ == "__main__":
@@ -400,53 +437,77 @@ while True:
         config_args = arg_parse()
         create_logger()
         config = config_validate()
+
+        # Создаём пулы подключений к базам данных PostGreSQL
         postgresql_naumendb_pool = psycopg2.pool.SimpleConnectionPool(
-            0, 1, **config["postgresql-naumen-db"]
+            0, 1, **config["postgresql-db"]
         )
         conn_db = postgresql_naumendb_pool.getconn()
-        postgresql_naumenreportsdb_pool = psycopg2.pool.SimpleConnectionPool(
-            0, 1, **config["postgresql-naumen-reports-db"]
+        conn_db.set_client_encoding('UTF8')
+        logger.info("Connection to PostGreSQL DB successfully.")
+
+        postgresql_naumen_reports_db_pool = psycopg2.pool.SimpleConnectionPool(
+            0, 1, **config["postgresql-reports-db"]
         )
-        conn_reports_db = postgresql_naumenreportsdb_pool.getconn()
+        conn_reports_db = postgresql_naumen_reports_db_pool.getconn()
+        conn_reports_db.set_client_encoding('UTF8')
+        logger.info("Connection to PostGreSQL reports DB successfully.")
+
+        # Подключаемся к Redis
+        redis_pool = redis.ConnectionPool(**config["redis"], max_connections=1)
+        conn_redis = redis.Redis(connection_pool=redis_pool)
+        logger.info("Connecting to the Redis database successfully.")
+
     except argparse.ArgumentError:
-        sys.exit(110)
+        sys.exit(1)
     except argparse.ArgumentTypeError:
-        sys.exit(111)
+        sys.exit(2)
     except IOError:
         logger.critical("Error opening/creating files.")
         logger.exception("")
         logging.shutdown()
-        sys.exit(1)
+        sys.exit(3)
     except jsonschema.exceptions.ValidationError:
         logger.critical("Configuration file failed validation.")
         logger.exception("")
         logging.shutdown()
         sys.exit(4)
-    except psycopg2.pool.PoolError:
-        logger.critical("DB connection error")
+    except psycopg2.Error:
+        logger.critical("Error connecting to PostGreSQL.")
         logger.exception("")
         logging.shutdown()
-        sys.exit(20)
+        sys.exit(11)
+    except redis.RedisError:
+        logger.critical("Error connecting to Redis.")
+        logger.exception("")
+        logging.shutdown()
+        sys.exit(12)
     except Exception:
-        logger.critical("Unknown error.")
+        logger.critical("Unknown error while setting up the program.")
         logger.exception('')
         logging.shutdown()
-        sys.exit(5)
+        sys.exit(41)
     logger.debug("Configuration file received: {}".format(config))
 
-    while config["daemon"]:
-        main()
-        logging.debug("Waiting {} seconds".format(config["waiting-time"]))
-        print("--- %s seconds ---" % (time.time() - start_time))
-        time.sleep(config["waiting-time"])
-        if sig.kill_now:
-            logger.info("The program is closed by a signal SIGTERM")
-            sys.exit(0)
-        # elif sig.restart_now:
-            # sig.restart_now = False
-            # logger.info("Program restarted by SIGHUP signal.")
-            # break
-    else:
-        main()
-        break
-logger.info("Program complete")
+    try:
+        while config["daemon"]:
+            main()
+            logging.debug("Waiting {} seconds".format(config["waiting-time"]))
+            print("--- %s seconds ---" % (time.time() - start_time))
+            time.sleep(config["waiting-time"])
+            if sig.kill_now:
+                logger.info("The program was closed by a signal SIGTERM.")
+                sys.exit(0)
+            # elif sig.restart_now:
+                # sig.restart_now = False
+                # logger.info("The program was restarted by a signal SIGHUP.")
+                # break
+        else:
+            main()
+            break
+    except Exception:
+        logger.critical("Unknown error while running the daemon.")
+        logger.exception('')
+        logging.shutdown()
+        sys.exit(42)
+logger.info("The program is complete.")

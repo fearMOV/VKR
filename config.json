@@ -7,14 +7,14 @@
     "port": 6379,
     "db": 0
   },
-  "postgresql-naumen-db": {
+  "postgresql-db": {
     "dbname": "naumendb",
     "host": "192.168.1.50",
     "port": 5432,
     "user": "naucrm",
     "password": "naucrm"
   },
-  "postgresql-naumen-reports-db": {
+  "postgresql-reports-db": {
     "dbname": "naumenreportsdb",
     "host": "192.168.1.50",
     "port": 5432,
