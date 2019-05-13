@@ -3,26 +3,26 @@
   "waiting-time": 30,
   "period": 7200,
   "redis": {
-    "host": "192.168.1.50",
+    "host": "172.16.201.131",
     "port": 6379,
     "db": 0
   },
   "postgresql-db": {
     "dbname": "naumendb",
-    "host": "192.168.1.50",
+    "host": "172.16.201.131",
     "port": 5432,
     "user": "naucrm",
     "password": "naucrm"
   },
   "postgresql-reports-db": {
     "dbname": "naumenreportsdb",
-    "host": "192.168.1.50",
+    "host": "172.16.201.131",
     "port": 5432,
     "user": "naucrm",
     "password": "naucrm"
   },
   "consul": {
-    "host": "192.168.1.50",
+    "host": "172.16.201.131",
     "port": 8500,
     "dc": "dc1"
   }

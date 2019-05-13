@@ -20,6 +20,7 @@ import jsonschema
 import time
 import signal
 
+
 start_time = time.time()
 
 
@@ -45,7 +46,7 @@ class Signals:
         """
         signal.signal(signal.SIGINT, self.kill_process)
         signal.signal(signal.SIGTERM, self.kill_process)
-        signal.signal(signal.SIGHUP, self.restart_process)
+        # signal.signal(signal.SIGHUP, self.restart_process)
 
     def kill_process(self, signum, frame):
         """
@@ -70,6 +71,27 @@ class Signals:
         :return: ничего не возвращаем.
         """
         self.restart_now = True
+
+
+def exit_program_error(kod, message=''):
+    if kod > 2:
+        logger.critical(message)
+        logger.exception('')
+        if kod > 10:
+            postgresql_naumendb_pool.closeall()
+            if kod > 11:
+                postgresql_naumen_reports_db_pool.closeall()
+                if kod > 12:
+                    redis_pool.disconnect()
+        logging.shutdown()
+    else:
+        logger.critical(message)
+        logger.exception(message)
+        postgresql_naumendb_pool.closeall()
+        postgresql_naumen_reports_db_pool.closeall()
+        redis_pool.disconnect()
+        logging.shutdown()
+    sys.exit(kod)
 
 
 def arg_parse():
@@ -126,7 +148,10 @@ def create_logger():
     # Выводим критические ошибки на консоль
     handler_stdout = logging.StreamHandler()
     handler_stdout.setLevel(logging.CRITICAL)
-    handler_stdout.setFormatter(logging.Formatter('%(levelname)s - %(name)s - %(asctime)s: %(message)s'))
+    handler_stdout.setFormatter(logging.Formatter(
+        '%(levelname)s - %(name)s - %(asctime)s: %(message)s',
+        datefmt="%Y-%m-%d %H:%M:%S"
+    ))
     logger.addHandler(handler_stdout)
     # Настройка логирования в файл
     logging.basicConfig(
@@ -388,41 +413,17 @@ def main():
         metrics_json = convert_to_json(sl_projects, ewt, anofo)
         send_report(metrics_json)
     except psycopg2.Error:
-        logger.critical("An error occurred while receiving data from PostGreSQL.")
-        logger.exception('')
-        logging.shutdown()
-        postgresql_naumendb_pool.closeall()
-        sys.exit(13)
+        exit_program_error(kod=14, message="An error occurred while receiving data from PostGreSQL.")
     except redis.RedisError:
-        logger.critical("An error occurred while receiving data from Redis.")
-        logger.exception('')
-        logging.shutdown()
-        postgresql_naumendb_pool.closeall()
-        sys.exit(14)
+        exit_program_error(kod=15, message="An error occurred while receiving data from Redis.")
     except EmptyDB:
-        logger.critical("No data was received when retrieving SL from PostGreSQL.")
-        logger.exception('')
-        logging.shutdown()
-        postgresql_naumendb_pool.closeall()
-        sys.exit(15)
+        exit_program_error(kod=16, message="When requesting SL from PostGreSQL, no data was received.")
     except json.JSONDecodeError:
-        logger.critical("Error when converting data to json format.")
-        logger.exception('')
-        logging.shutdown()
-        postgresql_naumendb_pool.closeall()
-        sys.exit(21)
+        exit_program_error(kod=21, message="Error when converting data to json format.")
     except consul.ConsulException:
-        logger.critical("Error when working with Consul.")
-        logger.exception('')
-        logging.shutdown()
-        postgresql_naumendb_pool.closeall()
-        sys.exit(31)
+        exit_program_error(kod=31, message="Error when working with Consul.")
     except Exception:
-        logger.critical("Unknown error while running main program.")
-        logger.exception('')
-        logging.shutdown()
-        postgresql_naumendb_pool.closeall()
-        sys.exit(43)
+        exit_program_error(kod=43, message="Unknown error while running main program.")
 
 
 if __name__ == "__main__":
@@ -438,6 +439,7 @@ while True:
         create_logger()
         config = config_validate()
 
+        trigger = False
         # Создаём пулы подключений к базам данных PostGreSQL
         postgresql_naumendb_pool = psycopg2.pool.SimpleConnectionPool(
             0, 1, **config["postgresql-db"]
@@ -446,6 +448,7 @@ while True:
         conn_db.set_client_encoding('UTF8')
         logger.info("Connection to PostGreSQL DB successfully.")
 
+        trigger = True
         postgresql_naumen_reports_db_pool = psycopg2.pool.SimpleConnectionPool(
             0, 1, **config["postgresql-reports-db"]
         )
@@ -459,55 +462,42 @@ while True:
         logger.info("Connecting to the Redis database successfully.")
 
     except argparse.ArgumentError:
-        sys.exit(1)
+        exit_program_error(kod=1)
     except argparse.ArgumentTypeError:
-        sys.exit(2)
+        exit_program_error(kod=2)
     except IOError:
-        logger.critical("Error opening/creating files.")
-        logger.exception("")
-        logging.shutdown()
-        sys.exit(3)
+        exit_program_error(kod=3, message="Error opening/creating files.")
     except jsonschema.exceptions.ValidationError:
-        logger.critical("Configuration file failed validation.")
-        logger.exception("")
-        logging.shutdown()
-        sys.exit(4)
+        exit_program_error(kod=4, message="Configuration file failed validation.")
     except psycopg2.Error:
-        logger.critical("Error connecting to PostGreSQL.")
-        logger.exception("")
-        logging.shutdown()
-        sys.exit(11)
+        if trigger:
+            exit_program_error(kod=12, message="Error connecting to PostGreSQL reports DB.")
+        else:
+            exit_program_error(kod=11, message="Error connecting to PostGreSQL DB.")
     except redis.RedisError:
-        logger.critical("Error connecting to Redis.")
-        logger.exception("")
-        logging.shutdown()
-        sys.exit(12)
+        exit_program_error(kod=13, message="Error connecting to Redis.")
     except Exception:
-        logger.critical("Unknown error while setting up the program.")
-        logger.exception('')
-        logging.shutdown()
-        sys.exit(41)
+        exit_program_error(kod=41, message="Unknown error while setting up the program.")
     logger.debug("Configuration file received: {}".format(config))
+    logger.info("The program is initialized.")
 
     try:
         while config["daemon"]:
             main()
+            logging.debug("Program execution time: {time}".format(time=(time.time() - start_time)))
             logging.debug("Waiting {} seconds".format(config["waiting-time"]))
-            print("--- %s seconds ---" % (time.time() - start_time))
             time.sleep(config["waiting-time"])
+            start_time = time.time()
             if sig.kill_now:
                 logger.info("The program was closed by a signal SIGTERM.")
                 sys.exit(0)
-            elif sig.restart_now:
-                sig.restart_now = False
-                logger.info("The program was restarted by a signal SIGHUP.")
-                break
+            # elif sig.restart_now:
+                # sig.restart_now = False
+                # logger.info("The program was restarted by a signal SIGHUP.")
+                # break
         else:
             main()
             break
     except Exception:
-        logger.critical("Unknown error while running the daemon.")
-        logger.exception('')
-        logging.shutdown()
-        sys.exit(42)
+        exit_program_error(kod=42, message="Unknown error while running the daemon.")
 logger.info("The program is complete.")
