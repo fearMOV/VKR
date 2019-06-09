@@ -73,7 +73,12 @@ class Signals:
         self.restart_now = True
 
 
-def exit_program_error(kod, message=''):
+def exit_program(kod, message=''):
+    if kod == 0:
+        logger.info(message)
+        postgresql_naumendb_pool.closeall()
+        postgresql_naumen_reports_db_pool.closeall()
+        redis_pool.disconnect()
     if kod > 2:
         logger.critical(message)
         logger.exception('')
@@ -83,13 +88,6 @@ def exit_program_error(kod, message=''):
                 postgresql_naumen_reports_db_pool.closeall()
                 if kod > 12:
                     redis_pool.disconnect()
-        logging.shutdown()
-    else:
-        logger.critical(message)
-        logger.exception(message)
-        postgresql_naumendb_pool.closeall()
-        postgresql_naumen_reports_db_pool.closeall()
-        redis_pool.disconnect()
         logging.shutdown()
     sys.exit(kod)
 
@@ -220,6 +218,7 @@ def config_validate():
         config_json = json.load(inf)
         jsonschema.validate(config_json, schema_json)
         logger.info("Configuration file was received.")
+        logger.debug("Configuration file: {}".format(config_json))
     return config_json
 
 
@@ -266,15 +265,15 @@ def get_ewt(project_ids):
     logger.debug("Projects ID: {}".format(project_ids))
 
     # Расчетное время ожидания (EWT) по каждой очереди
-    ewt = {}
+    ewts = {}
     logger.debug("ID projects from redis: {}".format(project_ids))
     for project_id in project_ids:
-        s = conn_redis.get("project_config:%s:mean_wait" % project_id)
-        s = s.decode()
-        ewt[project_id] = s
-    logger.debug("EWT: {}".format(ewt))
+        ewt = conn_redis.get("project_config:%s:mean_wait" % project_id)
+        ewt = ewt.decode()
+        ewts[project_id] = ewt
+    logger.debug("EWT: {}".format(ewts))
     logger.info("EWT was received.")
-    return ewt
+    return ewts
 
 
 def get_anofo(project_ids):
@@ -315,8 +314,8 @@ def get_anofo(project_ids):
                     anofo[row[0]][row[1]] += [row[2]]
                 logins.add(row[2])
 
-    logger.debug(anofo)
-    logger.debug(logins)
+    logger.debug("uuid_projects:qualification:logins: {}".format(anofo))
+    logger.debug("Logins of operators: {}".format(logins))
     # По логинам узнаём занятость оператора
     occupancy = {}
     with conn_db.cursor() as cursor:
@@ -345,7 +344,7 @@ def get_anofo(project_ids):
             )
             cursor.execute(sql)
             occupancy = {key: value for key, value in cursor}
-        logger.debug(occupancy)
+        logger.debug("Occupancy: {}".format(occupancy))
         # Расчитываем anofo (Среднее число свободных операторов)
         for project_id in project_ids:
             for i in range(1, 11):
@@ -395,9 +394,8 @@ def send_report(metrics_json):
     :param metrics_json: обязательный параметр, сформированная json переменная.
     :return: функия ничего не возвращает.
     """
-    c = consul.Consul(**config["consul"])
     key = "Balancer/" + platform.node()
-    c.kv.put(key, metrics_json)
+    conn_consul.kv.put(key, metrics_json)
 
 
 def main():
@@ -413,17 +411,17 @@ def main():
         metrics_json = convert_to_json(sl_projects, ewt, anofo)
         send_report(metrics_json)
     except psycopg2.Error:
-        exit_program_error(kod=14, message="An error occurred while receiving data from PostGreSQL.")
+        exit_program(kod=14, message="An error occurred while receiving data from PostGreSQL.")
     except redis.RedisError:
-        exit_program_error(kod=15, message="An error occurred while receiving data from Redis.")
+        exit_program(kod=15, message="An error occurred while receiving data from Redis.")
     except EmptyDB:
-        exit_program_error(kod=16, message="When requesting SL from PostGreSQL, no data was received.")
+        exit_program(kod=16, message="When requesting SL from PostGreSQL, no data was received.")
     except json.JSONDecodeError:
-        exit_program_error(kod=21, message="Error when converting data to json format.")
+        exit_program(kod=21, message="Error when converting data to json format.")
     except consul.ConsulException:
-        exit_program_error(kod=31, message="Error when working with Consul.")
+        exit_program(kod=31, message="Error when working with Consul.")
     except Exception:
-        exit_program_error(kod=43, message="Unknown error while running main program.")
+        exit_program(kod=43, message="Unknown error while running main program.")
 
 
 if __name__ == "__main__":
@@ -459,27 +457,31 @@ while True:
         # Подключаемся к Redis
         redis_pool = redis.ConnectionPool(**config["redis"], max_connections=1)
         conn_redis = redis.Redis(connection_pool=redis_pool)
+        conn_redis.ping()
         logger.info("Connecting to the Redis database successfully.")
 
+        # Подключаемся к Consul
+        conn_consul = consul.Consul(**config["consul"])
+
+        logger.info("The program is initialized.")
+
     except argparse.ArgumentError:
-        exit_program_error(kod=1)
+        exit_program(kod=1)
     except argparse.ArgumentTypeError:
-        exit_program_error(kod=2)
+        exit_program(kod=2)
     except IOError:
-        exit_program_error(kod=3, message="Error opening/creating files.")
+        exit_program(kod=3, message="Error opening/creating files.")
     except jsonschema.exceptions.ValidationError:
-        exit_program_error(kod=4, message="Configuration file failed validation.")
+        exit_program(kod=4, message="Configuration file failed validation.")
     except psycopg2.Error:
         if trigger:
-            exit_program_error(kod=12, message="Error connecting to PostGreSQL reports DB.")
+            exit_program(kod=12, message="Error connecting to PostGreSQL reports DB.")
         else:
-            exit_program_error(kod=11, message="Error connecting to PostGreSQL DB.")
+            exit_program(kod=11, message="Error connecting to PostGreSQL DB.")
     except redis.RedisError:
-        exit_program_error(kod=13, message="Error connecting to Redis.")
+        exit_program(kod=13, message="Error connecting to Redis.")
     except Exception:
-        exit_program_error(kod=41, message="Unknown error while setting up the program.")
-    logger.debug("Configuration file received: {}".format(config))
-    logger.info("The program is initialized.")
+        exit_program(kod=41, message="Unknown error while setting up the program.")
 
     try:
         while config["daemon"]:
@@ -489,8 +491,7 @@ while True:
             time.sleep(config["waiting-time"])
             start_time = time.time()
             if sig.kill_now:
-                logger.info("The program was closed by a signal SIGTERM.")
-                sys.exit(0)
+                exit_program(kod=0, message="The program was closed by a signal SIGTERM.")
             # elif sig.restart_now:
                 # sig.restart_now = False
                 # logger.info("The program was restarted by a signal SIGHUP.")
@@ -499,5 +500,5 @@ while True:
             main()
             break
     except Exception:
-        exit_program_error(kod=42, message="Unknown error while running the daemon.")
-logger.info("The program is complete.")
+        exit_program(kod=42, message="Unknown error while running the daemon.")
+exit_program(kod=0, message="The program is complete.")
